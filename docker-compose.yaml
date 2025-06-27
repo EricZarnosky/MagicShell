@@ -4,7 +4,7 @@ services:
   magicshell:
     build: .
     image: ghcr.io/ericzarnosky/magicshell:latest
-    container_name: magicshell
+    container_name: ${CONTAINER_NAME:-magicshell}
     hostname: ${HOSTNAME:-MagicShell}
     restart: unless-stopped
     
@@ -16,14 +16,14 @@ services:
     
     # Environment variables
     environment:
-      - PASSWORD=password  # Change this or use PASSWORD_FILE
-      # - PASSWORD_FILE=/run/secrets/root_password  # Uncomment to use password file
-      - TZ=UTC
-      - SHELL=bash  # Options: bash, zsh, sh
-      - HOSTNAME=MagicShell  # Container hostname
-      - PUID=1000  # User ID for file permissions
-      - PGID=1000  # Group ID for file permissions
-      - ENABLE_TAILSCALE=false  # Set to true to enable Tailscale
+      - PASSWORD=${PASSWORD:-password}
+      - PASSWORD_FILE=${PASSWORD_FILE:-}
+      - TZ=${TZ:-UTC}
+      - SHELL=${SHELL:-bash}
+      - HOSTNAME=${HOSTNAME:-MagicShell}
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - ENABLE_TAILSCALE=${ENABLE_TAILSCALE:-false}
     
     # Volume mounts
     volumes:
@@ -41,7 +41,7 @@ services:
     
     # Exposed ports
     ports:
-      - "2222:22"  # SSH access
+      - "${SSH_PORT:-2222}:22"
     
     # Secrets (uncomment to use password file)
     # secrets:
