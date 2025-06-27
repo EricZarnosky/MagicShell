@@ -114,19 +114,21 @@ RUN YQ_VERSION=$(curl -s https://api.github.com/repos/mikefarah/yq/releases/late
 # Install additional processing tools
 # xq (XML processor using yq)
 RUN ln -s /usr/local/bin/yq /usr/local/bin/xq
-
-# Install hcl2json for HCL processing (Terraform files)
-RUN wget https://github.com/tmccombs/hcl2json/releases/download/v0.6.3/hcl2json_linux_amd64 -O /usr/local/bin/hcl2json \
+# hcl2json for HCL processing (Terraform files) - latest version
+RUN HCL2JSON_VERSION=$(curl -s https://api.github.com/repos/tmccombs/hcl2json/releases/latest | jq -r .tag_name) \
+    && wget https://github.com/tmccombs/hcl2json/releases/download/${HCL2JSON_VERSION}/hcl2json_linux_amd64 -O /usr/local/bin/hcl2json \
     && chmod +x /usr/local/bin/hcl2json
 
-# Install htmlq for HTML processing
-RUN wget https://github.com/mgdm/htmlq/releases/download/v0.4.0/htmlq-x86_64-linux.tar.gz \
+# Install htmlq for HTML processing - latest version
+RUN HTMLQ_VERSION=$(curl -s https://api.github.com/repos/mgdm/htmlq/releases/latest | jq -r .tag_name) \
+    && wget https://github.com/mgdm/htmlq/releases/download/${HTMLQ_VERSION}/htmlq-x86_64-linux.tar.gz \
     && tar -xzf htmlq-x86_64-linux.tar.gz \
     && mv htmlq /usr/local/bin/ \
     && rm htmlq-x86_64-linux.tar.gz
 
-# Install dasel (universal data processor - JSON, YAML, TOML, XML, CSV)
-RUN wget https://github.com/TomWright/dasel/releases/download/v2.8.1/dasel_linux_amd64 -O /usr/local/bin/dasel \
+# Install dasel (universal data processor) - latest version
+RUN DASEL_VERSION=$(curl -s https://api.github.com/repos/TomWright/dasel/releases/latest | jq -r .tag_name) \
+    && wget https://github.com/TomWright/dasel/releases/download/${DASEL_VERSION}/dasel_linux_amd64 -O /usr/local/bin/dasel \
     && chmod +x /usr/local/bin/dasel
 
 # Install AWS CLI v2
@@ -195,11 +197,13 @@ RUN git clone https://github.com/ahmetb/kubectx /opt/kubectx \
 RUN curl -fsSL https://get.pulumi.com | sh \
     && mv /root/.pulumi/bin/pulumi /usr/local/bin/
 
-# Install Packer (use fixed version to avoid API rate limits)
-RUN wget https://releases.hashicorp.com/packer/1.11.2/packer_1.11.2_linux_amd64.zip \
-    && unzip packer_1.11.2_linux_amd64.zip \
+# Install Packer (use latest version automatically)
+RUN PACKER_VERSION=$(curl -s https://api.github.com/repos/hashicorp/packer/releases/latest | jq -r .tag_name | sed 's/v//') \
+    && echo "Installing Packer version: $PACKER_VERSION" \
+    && wget https://releases.hashicorp.com/packer/${PACKER_VERSION}/packer_${PACKER_VERSION}_linux_amd64.zip \
+    && unzip packer_${PACKER_VERSION}_linux_amd64.zip \
     && mv packer /usr/local/bin/ \
-    && rm packer_1.11.2_linux_amd64.zip
+    && rm packer_${PACKER_VERSION}_linux_amd64.zip
 
 # Install Flux CLI - latest version
 RUN curl -s https://fluxcd.io/install.sh | bash
@@ -218,23 +222,26 @@ RUN curl -Lo skaffold https://storage.googleapis.com/skaffold/releases/latest/sk
     && install skaffold /usr/local/bin/ \
     && rm skaffold
 
-# Install SOPS (use fixed version to avoid API rate limits)
-RUN wget https://github.com/getsops/sops/releases/download/v3.9.3/sops-v3.9.3.linux.amd64 \
-    && mv sops-v3.9.3.linux.amd64 /usr/local/bin/sops \
+# Install SOPS (use latest version automatically)
+RUN SOPS_VERSION=$(curl -s https://api.github.com/repos/getsops/sops/releases/latest | jq -r .tag_name) \
+    && echo "Installing SOPS version: $SOPS_VERSION" \
+    && wget https://github.com/getsops/sops/releases/download/${SOPS_VERSION}/sops-${SOPS_VERSION}.linux.amd64 \
+    && mv sops-${SOPS_VERSION}.linux.amd64 /usr/local/bin/sops \
     && chmod +x /usr/local/bin/sops
 
-# Install OpenBao (Vault alternative) - use known stable version
-RUN OPENBAO_VERSION="2.2.1" \
-    && wget https://github.com/openbao/openbao/releases/download/v${OPENBAO_VERSION}/bao_${OPENBAO_VERSION}_linux_amd64.tar.gz \
-    && tar -xzf bao_${OPENBAO_VERSION}_linux_amd64.tar.gz \
-    && mv bao /usr/local/bin/ \
-    && rm bao_${OPENBAO_VERSION}_linux_amd64.tar.gz
+# Install OpenBao (Vault alternative) - automatically get latest version
+RUN OPENBAO_VERSION=$(curl -s https://api.github.com/repos/openbao/openbao/releases/latest | jq -r .tag_name | sed 's/v//') \
+    && echo "Installing OpenBao version: $OPENBAO_VERSION" \
+    && wget https://github.com/openbao/openbao/releases/download/v${OPENBAO_VERSION}/bao_${OPENBAO_VERSION}_linux_amd64.deb \
+    && dpkg -i bao_${OPENBAO_VERSION}_linux_amd64.deb \
+    && rm bao_${OPENBAO_VERSION}_linux_amd64.deb
 
 # Install pass (password manager)
 RUN apt-get update && apt-get install -y pass && rm -rf /var/lib/apt/lists/*
 
 # Install Prometheus promtool - latest version
 RUN PROMETHEUS_VERSION=$(curl -s https://api.github.com/repos/prometheus/prometheus/releases/latest | jq -r .tag_name | sed 's/v//') \
+    && echo "Installing Prometheus promtool version: $PROMETHEUS_VERSION" \
     && wget https://github.com/prometheus/prometheus/releases/download/v${PROMETHEUS_VERSION}/prometheus-${PROMETHEUS_VERSION}.linux-amd64.tar.gz \
     && tar xvfz prometheus-${PROMETHEUS_VERSION}.linux-amd64.tar.gz \
     && mv prometheus-${PROMETHEUS_VERSION}.linux-amd64/promtool /usr/local/bin/ \
