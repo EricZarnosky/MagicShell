@@ -40,6 +40,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     zsh \
     zsh-autosuggestions \
     zsh-syntax-highlighting \
+    mc \
     # File system support
     nfs-common \
     cifs-utils \
@@ -49,12 +50,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # Security tools
     openssl \
     gpg \
+    pass \
     # Data processing
     jq \
     # Database clients (minimal)
     postgresql-client \
     mysql-client \
     sqlite3 \
+    redis-tools \
     # Programming languages
     python3 \
     python3-pip \
@@ -413,8 +416,20 @@ RUN for i in 1 2 3; do \
     && mv vault /usr/local/bin/ \
     && rm vault_${VAULT_VERSION}_linux_${ARCH}.zip
 
-# Install pass (password manager)
-RUN apt-get update && apt-get install -y pass && rm -rf /var/lib/apt/lists/*
+# Install HashiCorp Vault - Use GitHub releases API with retry logic
+RUN for i in 1 2 3; do \
+        VAULT_VERSION=$(curl -s --fail https://api.github.com/repos/hashicorp/vault/releases/latest | jq -r .tag_name | sed 's/v//') && break || sleep 30; \
+    done \
+    && if [ -z "$VAULT_VERSION" ]; then \
+        echo "Failed to get Vault version from API, installation will fail" && \
+        exit 1; \
+    fi \
+    && echo "Installing Vault version: $VAULT_VERSION" \
+    && ARCH=$(dpkg --print-architecture) \
+    && wget https://releases.hashicorp.com/vault/${VAULT_VERSION}/vault_${VAULT_VERSION}_linux_${ARCH}.zip \
+    && unzip -o vault_${VAULT_VERSION}_linux_${ARCH}.zip \
+    && mv vault /usr/local/bin/ \
+    && rm vault_${VAULT_VERSION}_linux_${ARCH}.zip
 
 # Install Prometheus promtool - Robust GitHub API handling
 RUN for i in 1 2 3; do \
@@ -432,7 +447,7 @@ RUN for i in 1 2 3; do \
     && rm -rf prometheus-${PROMETHEUS_VERSION}.linux-${ARCH}*
 
 # Install Nix package manager (single-user mode for container)
-RUN sh <(curl -L https://nixos.org/nix/install) --no-daemon \
+RUN curl -L https://nixos.org/nix/install | sh -s -- --no-daemon \
     && echo '. /root/.nix-profile/etc/profile.d/nix.sh' >> /root/.bashrc \
     && echo '. /root/.nix-profile/etc/profile.d/nix.sh' >> /root/.zshrc
 
@@ -486,9 +501,6 @@ RUN for i in 1 2 3; do \
     && tar xzf /tmp/etcd-${ETCD_VER}-linux-${ARCH}.tar.gz -C /tmp \
     && mv /tmp/etcd-${ETCD_VER}-linux-${ARCH}/etcdctl /usr/local/bin/ \
     && rm -rf /tmp/etcd-${ETCD_VER}-linux-${ARCH}*
-
-# Install mc (Midnight Commander)
-RUN apt-get update && apt-get install -y mc && rm -rf /var/lib/apt/lists/*
 
 # Install Tailscale - Use official installer
 RUN curl -fsSL https://tailscale.com/install.sh | sh
