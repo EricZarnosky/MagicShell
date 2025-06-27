@@ -95,7 +95,7 @@ RUN for i in 1 2 3; do \
     && echo "Installing Terraform version: $TERRAFORM_VERSION" \
     && ARCH=$(dpkg --print-architecture) \
     && wget https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_${ARCH}.zip \
-    && unzip terraform_${TERRAFORM_VERSION}_linux_${ARCH}.zip \
+    && unzip -o terraform_${TERRAFORM_VERSION}_linux_${ARCH}.zip \
     && mv terraform /usr/local/bin/ \
     && rm terraform_${TERRAFORM_VERSION}_linux_${ARCH}.zip
 
@@ -232,7 +232,7 @@ RUN ARCH=$(dpkg --print-architecture) \
         *) echo "Unsupported architecture: $ARCH" && exit 1 ;; \
     esac \
     && curl "https://awscli.amazonaws.com/awscli-exe-linux-${AWS_ARCH}.zip" -o "awscliv2.zip" \
-    && unzip awscliv2.zip \
+    && unzip -o awscliv2.zip \
     && ./aws/install \
     && rm -rf aws awscliv2.zip
 
@@ -340,7 +340,7 @@ RUN for i in 1 2 3; do \
     && echo "Installing Packer version: $PACKER_VERSION" \
     && ARCH=$(dpkg --print-architecture) \
     && wget https://releases.hashicorp.com/packer/${PACKER_VERSION}/packer_${PACKER_VERSION}_linux_${ARCH}.zip \
-    && unzip packer_${PACKER_VERSION}_linux_${ARCH}.zip \
+    && unzip -o packer_${PACKER_VERSION}_linux_${ARCH}.zip \
     && mv packer /usr/local/bin/ \
     && rm packer_${PACKER_VERSION}_linux_${ARCH}.zip
 
@@ -409,7 +409,7 @@ RUN for i in 1 2 3; do \
     && echo "Installing Vault version: $VAULT_VERSION" \
     && ARCH=$(dpkg --print-architecture) \
     && wget https://releases.hashicorp.com/vault/${VAULT_VERSION}/vault_${VAULT_VERSION}_linux_${ARCH}.zip \
-    && unzip vault_${VAULT_VERSION}_linux_${ARCH}.zip \
+    && unzip -o vault_${VAULT_VERSION}_linux_${ARCH}.zip \
     && mv vault /usr/local/bin/ \
     && rm vault_${VAULT_VERSION}_linux_${ARCH}.zip
 
