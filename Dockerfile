@@ -15,8 +15,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     TZ=UTC \
     PASSWORD=password \
     PASSWORD_FILE="" \
-    SHELL=bash \
-    HOSTNAME=MagicShell
+    SHELL=bash
 
 # Install base packages and dependencies
 RUN apt-get update && apt-get install -y \
@@ -61,12 +60,13 @@ RUN apt-get update && apt-get install -y \
     pandoc \
     && rm -rf /var/lib/apt/lists/*
 
-# Install OpenTofu (Terraform alternative) using direct download
-RUN OPENTOFU_VERSION="1.8.6" \
-    && wget https://github.com/opentofu/opentofu/releases/download/v${OPENTOFU_VERSION}/tofu_${OPENTOFU_VERSION}_linux_amd64.zip \
-    && unzip tofu_${OPENTOFU_VERSION}_linux_amd64.zip \
-    && mv tofu /usr/local/bin/ \
-    && rm tofu_${OPENTOFU_VERSION}_linux_amd64.zip
+# Install OpenTofu (Terraform alternative) - use official apt repository
+RUN curl -fsSL https://get.opentofu.org/opentofu.gpg -o /etc/apt/keyrings/opentofu.gpg \
+    && curl -fsSL https://packages.opentofu.org/opentofu/tofu/gpgkey | gpg --no-tty --batch --dearmor -o /etc/apt/keyrings/opentofu-repo.gpg \
+    && chmod a+r /etc/apt/keyrings/opentofu.gpg /etc/apt/keyrings/opentofu-repo.gpg \
+    && echo "deb [signed-by=/etc/apt/keyrings/opentofu.gpg,/etc/apt/keyrings/opentofu-repo.gpg] https://packages.opentofu.org/opentofu/tofu/any/ any main" | tee /etc/apt/sources.list.d/opentofu.list \
+    && apt-get update && apt-get install -y tofu \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install kubectl
 RUN curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg \
@@ -223,8 +223,8 @@ RUN wget https://github.com/getsops/sops/releases/download/v3.9.3/sops-v3.9.3.li
     && mv sops-v3.9.3.linux.amd64 /usr/local/bin/sops \
     && chmod +x /usr/local/bin/sops
 
-# Install OpenBao (Vault alternative) - using correct download format
-RUN OPENBAO_VERSION="2.2.2" \
+# Install OpenBao (Vault alternative) - use correct download format
+RUN OPENBAO_VERSION="2.3.1" \
     && wget https://github.com/openbao/openbao/releases/download/v${OPENBAO_VERSION}/bao_${OPENBAO_VERSION}_linux_amd64.tar.gz \
     && tar -xzf bao_${OPENBAO_VERSION}_linux_amd64.tar.gz \
     && mv bao /usr/local/bin/ \
