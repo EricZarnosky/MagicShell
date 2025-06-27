@@ -1,0 +1,341 @@
+#!/bin/bash
+
+# huh - Tool version information display script
+# Usage: huh [--app|-a <app_name>] [--help|-h]
+
+VERSION="1.0.0"
+SCRIPT_NAME="huh"
+
+# Color codes for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+PURPLE='\033[0;35m'
+CYAN='\033[0;36m'
+WHITE='\033[1;37m'
+NC='\033[0m' # No Color
+
+# Function to print colored output
+print_color() {
+    local color=$1
+    local text=$2
+    echo -e "${color}${text}${NC}"
+}
+
+# Function to print section header
+print_header() {
+    local title=$1
+    echo
+    print_color "$CYAN" "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    print_color "$WHITE" "  $title"
+    print_color "$CYAN" "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+}
+
+# Function to get version safely
+get_version() {
+    local cmd=$1
+    local version_flag=${2:-"--version"}
+    
+    if command -v "$cmd" >/dev/null 2>&1; then
+        case $cmd in
+            "python3")
+                python3 --version 2>&1 | head -1
+                ;;
+            "pip3")
+                pip3 --version 2>&1 | head -1
+                ;;
+            "go")
+                go version 2>&1 | head -1
+                ;;
+            "node")
+                node --version 2>&1 | head -1
+                ;;
+            "npm")
+                npm --version 2>&1 | head -1
+                ;;
+            "pwsh")
+                pwsh --version 2>&1 | head -1
+                ;;
+            *)
+                $cmd $version_flag 2>&1 | head -1
+                ;;
+        esac
+    else
+        echo "Not installed"
+    fi
+}
+
+# Function to get detailed app info
+get_app_details() {
+    local app=$1
+    
+    print_header "Detailed Information: $app"
+    
+    if ! command -v "$app" >/dev/null 2>&1; then
+        print_color "$RED" "❌ $app is not installed or not in PATH"
+        return 1
+    fi
+    
+    print_color "$GREEN" "✅ $app is installed"
+    echo
+    
+    # Basic info
+    print_color "$YELLOW" "📍 Location:"
+    which "$app" 2>/dev/null || echo "  Not found in PATH"
+    echo
+    
+    print_color "$YELLOW" "📦 Version Information:"
+    case $app in
+        "kubectl")
+            kubectl version --client --output=yaml 2>/dev/null || kubectl version --client 2>/dev/null
+            ;;
+        "helm")
+            helm version 2>/dev/null
+            ;;
+        "terraform"|"tofu")
+            $app version 2>/dev/null
+            ;;
+        "vault"|"bao")
+            $app version 2>/dev/null
+            ;;
+        "k9s")
+            k9s version 2>/dev/null
+            ;;
+        "talosctl")
+            talosctl version --client 2>/dev/null
+            ;;
+        "docker")
+            docker version --format "{{.Client.Version}}" 2>/dev/null
+            echo "Docker API Version: $(docker version --format "{{.Client.APIVersion}}" 2>/dev/null)"
+            ;;
+        "go")
+            go version 2>/dev/null
+            echo "GOROOT: $(go env GOROOT 2>/dev/null)"
+            echo "GOPATH: $(go env GOPATH 2>/dev/null)"
+            ;;
+        "python3")
+            python3 --version 2>/dev/null
+            echo "Python Path: $(which python3 2>/dev/null)"
+            echo "Pip Version: $(pip3 --version 2>/dev/null)"
+            ;;
+        "node")
+            node --version 2>/dev/null
+            echo "NPM Version: $(npm --version 2>/dev/null)"
+            echo "Node Path: $(which node 2>/dev/null)"
+            ;;
+        "aws")
+            aws --version 2>/dev/null
+            ;;
+        "az")
+            az version 2>/dev/null
+            ;;
+        "gcloud")
+            gcloud version 2>/dev/null
+            ;;
+        "ansible")
+            ansible --version 2>/dev/null
+            ;;
+        "flux")
+            flux version 2>/dev/null
+            ;;
+        "argocd")
+            argocd version --client 2>/dev/null
+            ;;
+        "pulumi")
+            pulumi version 2>/dev/null
+            ;;
+        "packer")
+            packer version 2>/dev/null
+            ;;
+        *)
+            # Generic version check
+            $app --version 2>/dev/null || $app -v 2>/dev/null || $app version 2>/dev/null
+            ;;
+    esac
+    
+    echo
+    print_color "$YELLOW" "🔧 Additional Information:"
+    
+    # File info
+    if [ -f "$(which "$app" 2>/dev/null)" ]; then
+        local app_path=$(which "$app")
+        echo "  File Size: $(ls -lh "$app_path" 2>/dev/null | awk '{print $5}')"
+        echo "  Last Modified: $(ls -l "$app_path" 2>/dev/null | awk '{print $6, $7, $8}')"
+    fi
+    
+    # Help text (first few lines)
+    echo
+    print_color "$YELLOW" "📖 Help Preview:"
+    $app --help 2>/dev/null | head -5 2>/dev/null || echo "  No help available"
+}
+
+# Function to display all tool versions
+show_all_versions() {
+    print_color "$PURPLE" "
+███╗   ███╗ █████╗  ██████╗ ██╗ ██████╗███████╗██╗  ██╗███████╗██╗     ██╗     
+████╗ ████║██╔══██╗██╔════╝ ██║██╔════╝██╔════╝██║  ██║██╔════╝██║     ██║     
+██╔████╔██║███████║██║  ███╗██║██║     ███████╗███████║█████╗  ██║     ██║     
+██║╚██╔╝██║██╔══██║██║   ██║██║██║     ╚════██║██╔══██║██╔══╝  ██║     ██║     
+██║ ╚═╝ ██║██║  ██║╚██████╔╝██║╚██████╗███████║██║  ██║███████╗███████╗███████╗
+╚═╝     ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═╝ ╚═════╝╚══════╝╚═╝  ╚═╝╚══════╝╚══════╝╚══════╝
+"
+    
+    print_color "$WHITE" "MagicShell - Universal Infrastructure Management Container"
+    print_color "$CYAN" "Container: MagicShell | Script: $SCRIPT_NAME v$VERSION"
+    
+    # Show build info if available
+    if [ -n "$BUILD_DATE" ]; then
+        print_color "$CYAN" "Build Date: $BUILD_DATE"
+    fi
+    if [ -n "$VCS_REF" ]; then
+        print_color "$CYAN" "Git Commit: $VCS_REF"
+    fi
+    print_color "$CYAN" "Repository: https://github.com/EricZarnosky/MagicShell"
+    
+    # Programming Languages & Runtimes
+    print_header "Programming Languages & Runtimes"
+    printf "%-20s %s\n" "Python:" "$(get_version python3)"
+    printf "%-20s %s\n" "Pip:" "$(get_version pip3)"
+    printf "%-20s %s\n" "Go:" "$(get_version go)"
+    printf "%-20s %s\n" "Node.js:" "$(get_version node)"
+    printf "%-20s %s\n" "NPM:" "$(get_version npm)"
+    printf "%-20s %s\n" "PowerShell:" "$(get_version pwsh)"
+    
+    # Kubernetes & Container Tools
+    print_header "Kubernetes & Container Tools"
+    printf "%-20s %s\n" "kubectl:" "$(get_version kubectl)"
+    printf "%-20s %s\n" "helm:" "$(get_version helm)"
+    printf "%-20s %s\n" "k9s:" "$(get_version k9s)"
+    printf "%-20s %s\n" "kustomize:" "$(get_version kustomize)"
+    printf "%-20s %s\n" "kubectx:" "$(get_version kubectx)"
+    printf "%-20s %s\n" "kubens:" "$(get_version kubens)"
+    printf "%-20s %s\n" "talosctl:" "$(get_version talosctl)"
+    printf "%-20s %s\n" "docker:" "$(get_version docker)"
+    printf "%-20s %s\n" "nerdctl:" "$(get_version nerdctl)"
+    printf "%-20s %s\n" "crictl:" "$(get_version crictl)"
+    
+    # Infrastructure as Code
+    print_header "Infrastructure as Code"
+    printf "%-20s %s\n" "opentofu:" "$(get_version tofu)"
+    printf "%-20s %s\n" "pulumi:" "$(get_version pulumi)"
+    printf "%-20s %s\n" "packer:" "$(get_version packer)"
+    printf "%-20s %s\n" "ansible:" "$(get_version ansible)"
+    
+    # Cloud CLI Tools
+    print_header "Cloud CLI Tools"
+    printf "%-20s %s\n" "aws:" "$(get_version aws)"
+    printf "%-20s %s\n" "az:" "$(get_version az)"
+    printf "%-20s %s\n" "gcloud:" "$(get_version gcloud)"
+    printf "%-20s %s\n" "doctl:" "$(get_version doctl)"
+    
+    # CI/CD & GitOps
+    print_header "CI/CD & GitOps"
+    printf "%-20s %s\n" "flux:" "$(get_version flux)"
+    printf "%-20s %s\n" "argocd:" "$(get_version argocd)"
+    printf "%-20s %s\n" "skaffold:" "$(get_version skaffold)"
+    
+    # Security & Secrets
+    print_header "Security & Secrets Management"
+    printf "%-20s %s\n" "openbao:" "$(get_version bao)"
+    printf "%-20s %s\n" "sops:" "$(get_version sops)"
+    printf "%-20s %s\n" "pass:" "$(get_version pass)"
+    printf "%-20s %s\n" "gpg:" "$(get_version gpg)"
+    
+    # Database CLI Tools
+    print_header "Database CLI Tools"
+    printf "%-20s %s\n" "psql:" "$(get_version psql)"
+    printf "%-20s %s\n" "mysql:" "$(get_version mysql)"
+    printf "%-20s %s\n" "mongosh:" "$(get_version mongosh)"
+    printf "%-20s %s\n" "redis-cli:" "$(get_version redis-cli)"
+    printf "%-20s %s\n" "sqlite3:" "$(get_version sqlite3)"
+    printf "%-20s %s\n" "cqlsh:" "$(get_version cqlsh)"
+    printf "%-20s %s\n" "etcdctl:" "$(get_version etcdctl)"
+    printf "%-20s %s\n" "elasticsearch-cli:" "$(get_version elasticsearch_cli)"
+    
+    # Data Processing & Utilities
+    print_header "Data Processing & Utilities"
+    printf "%-20s %s\n" "jq:" "$(get_version jq)"
+    printf "%-20s %s\n" "yq:" "$(get_version yq)"
+    printf "%-20s %s\n" "xq:" "$(get_version xq)"
+    printf "%-20s %s\n" "hcl2json:" "$(get_version hcl2json)"
+    printf "%-20s %s\n" "htmlq:" "$(get_version htmlq)"
+    printf "%-20s %s\n" "dasel:" "$(get_version dasel)"
+    printf "%-20s %s\n" "httpie:" "$(get_version http)"
+    printf "%-20s %s\n" "fzf:" "$(get_version fzf)"
+    printf "%-20s %s\n" "ripgrep:" "$(get_version rg)"
+    printf "%-20s %s\n" "xmlstarlet:" "$(get_version xmlstarlet)"
+    printf "%-20s %s\n" "pandoc:" "$(get_version pandoc)"
+    
+    # Monitoring
+    print_header "Monitoring & Observability"
+    printf "%-20s %s\n" "promtool:" "$(get_version promtool)"
+    
+    # Additional Tools
+    print_header "Additional Tools"
+    printf "%-20s %s\n" "jenkins-cli:" "$(get_version java) (jenkins-cli.jar)"
+    printf "%-20s %s\n" "nix:" "$(get_version nix-env)"
+    printf "%-20s %s\n" "tailscale:" "$(get_version tailscale)"
+    
+    echo
+    print_color "$GREEN" "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    print_color "$YELLOW" "💡 Tip: Use 'huh --app <tool_name>' for detailed information about a specific tool"
+    print_color "$YELLOW" "    Example: huh --app kubectl"
+    print_color "$GREEN" "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo
+}
+
+# Function to show help
+show_help() {
+    print_color "$CYAN" "
+Usage: $SCRIPT_NAME [OPTIONS]
+
+OPTIONS:
+    (no args)           Show versions of all installed tools
+    --app, -a <name>    Show detailed information about a specific tool
+    --help, -h          Show this help message
+    --version, -v       Show script version
+
+EXAMPLES:
+    $SCRIPT_NAME                    # Show all tool versions
+    $SCRIPT_NAME --app kubectl     # Show detailed kubectl information
+    $SCRIPT_NAME -a terraform      # Show detailed terraform information
+
+SUPPORTED TOOLS:
+    Languages: python3, pip3, go, node, npm, pwsh
+    Kubernetes: kubectl, helm, k9s, kustomize, kubectx, kubens, talosctl
+    Containers: docker, nerdctl, crictl
+    IaC: opentofu, pulumi, packer, ansible
+    Cloud: aws, az, gcloud, doctl
+    CI/CD: flux, argocd, skaffold
+    Security: openbao, sops, pass, gpg
+    Databases: psql, mysql, mongosh, redis-cli, sqlite3, cqlsh, etcdctl, elasticsearch-cli
+    Utils: jq, yq, xq, hcl2json, htmlq, dasel, http, fzf, rg, promtool, tailscale, nix-env, jenkins-cli
+"
+}
+
+# Main script logic
+case "$1" in
+    --app|-a)
+        if [ -z "$2" ]; then
+            print_color "$RED" "❌ Error: --app requires a tool name"
+            echo "   Usage: $SCRIPT_NAME --app <tool_name>"
+            exit 1
+        fi
+        get_app_details "$2"
+        ;;
+    --help|-h)
+        show_help
+        ;;
+    --version|-v)
+        echo "$SCRIPT_NAME version $VERSION"
+        ;;
+    "")
+        show_all_versions
+        ;;
+    *)
+        print_color "$RED" "❌ Error: Unknown option '$1'"
+        echo "   Use '$SCRIPT_NAME --help' for usage information"
+        exit 1
+        ;;
+esac

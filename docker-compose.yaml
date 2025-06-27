@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  magicshell:
+    build: .
+    image: ghcr.io/ericzarnosky/magicshell:latest
+    container_name: magicshell
+    hostname: ${HOSTNAME:-MagicShell}
+    restart: unless-stopped
+    
+    # Privileged mode for NFS/SMB mounting and Tailscale
+    privileged: true
+    
+    # Network configuration
+    network_mode: host
+    
+    # Environment variables
+    environment:
+      - PASSWORD=password  # Change this or use PASSWORD_FILE
+      # - PASSWORD_FILE=/run/secrets/root_password  # Uncomment to use password file
+      - TZ=UTC
+      - SHELL=bash  # Options: bash, zsh, sh
+      - HOSTNAME=MagicShell  # Container hostname
+      - PUID=1000  # User ID for file permissions
+      - PGID=1000  # Group ID for file permissions
+      - ENABLE_TAILSCALE=false  # Set to true to enable Tailscale
+    
+    # Volume mounts
+    volumes:
+      # Root home directory persistence
+      - ./config:/root/config
+      
+      # fstab persistence
+      - ./config/fstab:/etc/fstab:ro
+      
+      # Docker socket (optional, for Docker-in-Docker scenarios)
+      # - /var/run/docker.sock:/var/run/docker.sock
+      
+      # Tailscale socket (if running Tailscale on host)
+      # - /var/run/tailscale:/var/run/tailscale
+    
+    # Exposed ports
+    ports:
+      - "2222:22"  # SSH access
+    
+    # Secrets (uncomment to use password file)
+    # secrets:
+    #   - root_password
+    
+    # Capabilities
+    cap_add:
+      - SYS_ADMIN
+      - NET_ADMIN
+      - DAC_READ_SEARCH
+    
+    # Device access for NFS/SMB
+    devices:
+      - /dev/fuse
+
+# Uncomment to use Docker secrets for password
+# secrets:
+#   root_password:
+#     file: ./secrets/root_password.txt
