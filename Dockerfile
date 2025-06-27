@@ -47,6 +47,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fuse \
     # Archive tools
     p7zip-full \
+    xz-utils \
     # Security tools
     openssl \
     gpg \
