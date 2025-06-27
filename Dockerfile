@@ -223,12 +223,12 @@ RUN wget https://github.com/getsops/sops/releases/download/v3.9.3/sops-v3.9.3.li
     && mv sops-v3.9.3.linux.amd64 /usr/local/bin/sops \
     && chmod +x /usr/local/bin/sops
 
-# Install OpenBao (Vault alternative)
-RUN OPENBAO_VERSION="2.1.0" \
-    && wget https://github.com/openbao/openbao/releases/download/v${OPENBAO_VERSION}/bao_${OPENBAO_VERSION}_linux_amd64.zip \
-    && unzip bao_${OPENBAO_VERSION}_linux_amd64.zip \
+# Install OpenBao (Vault alternative) - using correct download format
+RUN OPENBAO_VERSION="2.2.2" \
+    && wget https://github.com/openbao/openbao/releases/download/v${OPENBAO_VERSION}/bao_${OPENBAO_VERSION}_linux_amd64.tar.gz \
+    && tar -xzf bao_${OPENBAO_VERSION}_linux_amd64.tar.gz \
     && mv bao /usr/local/bin/ \
-    && rm bao_${OPENBAO_VERSION}_linux_amd64.zip
+    && rm bao_${OPENBAO_VERSION}_linux_amd64.tar.gz
 
 # Install pass (password manager)
 RUN apt-get update && apt-get install -y pass && rm -rf /var/lib/apt/lists/*
