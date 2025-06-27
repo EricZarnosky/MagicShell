@@ -223,8 +223,8 @@ RUN wget https://github.com/getsops/sops/releases/download/v3.9.3/sops-v3.9.3.li
     && mv sops-v3.9.3.linux.amd64 /usr/local/bin/sops \
     && chmod +x /usr/local/bin/sops
 
-# Install OpenBao (Vault alternative) - use correct download format
-RUN OPENBAO_VERSION="2.3.1" \
+# Install OpenBao (Vault alternative) - use known stable version
+RUN OPENBAO_VERSION="2.2.1" \
     && wget https://github.com/openbao/openbao/releases/download/v${OPENBAO_VERSION}/bao_${OPENBAO_VERSION}_linux_amd64.tar.gz \
     && tar -xzf bao_${OPENBAO_VERSION}_linux_amd64.tar.gz \
     && mv bao /usr/local/bin/ \
