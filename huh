@@ -295,6 +295,8 @@ show_all_versions() {
     print_header "Available Aliases"
     print_color "$YELLOW" "Kubernetes & Tools:"
     printf "%-20s %s\n" "k" "kubectl"
+    printf "%-20s %s\n" "kx" "kubectx"
+    printf "%-20s %s\n" "kn" "kubens"
     printf "%-20s %s\n" "t" "talosctl"
     printf "%-20s %s\n" "h" "helm"
     printf "%-20s %s\n" "kz" "kustomize"
@@ -345,7 +347,7 @@ SUPPORTED TOOLS:
     Utils: jq, yq, xq, hcl2json, htmlq, dasel, http, fzf, rg, promtool, tailscale, nix-env, jenkins-cli
 
 AVAILABLE ALIASES:
-    k=kubectl, t=talosctl, h=helm, kz=kustomize, fcd=flux, acd=argocd
+    k=kubectl, kx=kubectx, kn=kubens, t=talosctl, h=helm, kz=kustomize, fcd=flux, acd=argocd
     ot=tofu, tf=terraform, v=vault
     
     All aliases include full autocomplete support!

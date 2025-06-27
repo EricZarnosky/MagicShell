@@ -233,6 +233,8 @@ The container includes convenient aliases for commonly used tools with full auto
 | Alias | Command | Description |
 |-------|---------|-------------|
 | `k` | `kubectl` | Kubernetes CLI |
+| `kx` | `kubectx` | Switch between Kubernetes contexts |
+| `kn` | `kubens` | Switch between Kubernetes namespaces |
 | `t` | `talosctl` | Talos Linux CLI |
 | `h` | `helm` | Helm package manager |
 | `kz` | `kustomize` | Kubernetes configuration customization |
@@ -252,6 +254,13 @@ All aliases include full autocomplete support in both Bash and Zsh:
 # These commands are equivalent and both have autocomplete:
 kubectl get pods
 k get pods
+
+# Context and namespace switching with autocomplete
+kubectx production
+kx production  # Shows available contexts with tab completion
+
+kubens kube-system  
+kn kube-system  # Shows available namespaces with tab completion
 
 # Helm with autocomplete
 helm install my-app ./chart
@@ -341,7 +350,9 @@ docker exec -it magicshell docker -H tcp://remote-host:2376 ps
 
 # Kubernetes context switching
 docker exec -it magicshell kubectx production
+docker exec -it magicshell kx staging  # Using alias
 docker exec -it magicshell kubens kube-system
+docker exec -it magicshell kn default  # Using alias
 
 # Kubernetes tools with aliases
 docker exec -it magicshell kubectl get nodes

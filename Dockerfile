@@ -84,13 +84,11 @@ RUN curl -fsSL https://get.opentofu.org/opentofu.gpg -o /etc/apt/keyrings/opento
     && apt-get update && apt-get install -y tofu \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Terraform (can coexist with OpenTofu)
-RUN for i in 1 2 3; do \
-        TERRAFORM_VERSION=$(curl -s --fail https://api.github.com/repos/hashicorp/terraform/releases/latest | jq -r .tag_name | sed 's/v//') && break || sleep 30; \
-    done \
+# Install Terraform - Use HashiCorp releases (not GitHub API to avoid rate limits)
+RUN TERRAFORM_VERSION=$(curl -s https://releases.hashicorp.com/terraform/ | grep -o 'terraform_[0-9]*\.[0-9]*\.[0-9]*' | head -1 | cut -d'_' -f2) \
     && if [ -z "$TERRAFORM_VERSION" ]; then \
-        echo "Failed to get Terraform version, using fallback" && \
-        TERRAFORM_VERSION="1.9.8"; \
+        echo "Failed to get Terraform version from HashiCorp releases, installation will fail" && \
+        exit 1; \
     fi \
     && echo "Installing Terraform version: $TERRAFORM_VERSION" \
     && ARCH=$(dpkg --print-architecture) \
@@ -111,34 +109,32 @@ RUN curl https://baltocdn.com/helm/signing.asc | gpg --dearmor | tee /usr/share/
     && apt-get update && apt-get install -y helm \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Kustomize - Use GitHub API with retry logic to avoid rate limits
+# Install Kustomize - Use direct download with proper tag parsing (handles kustomize/ prefix)
 RUN for i in 1 2 3; do \
-        KUSTOMIZE_VERSION=$(curl -s --fail https://api.github.com/repos/kubernetes-sigs/kustomize/releases/latest | jq -r .tag_name | sed 's/kustomize\///') && break || sleep 30; \
+        KUSTOMIZE_VERSION=$(curl -s --fail https://api.github.com/repos/kubernetes-sigs/kustomize/releases/latest | jq -r .tag_name | sed 's/^kustomize\///' | sed 's/^v//') && break || sleep 30; \
     done \
     && if [ -z "$KUSTOMIZE_VERSION" ]; then \
-        echo "Failed to get Kustomize version, using fallback" && \
-        KUSTOMIZE_VERSION="v5.5.0"; \
+        echo "Failed to get Kustomize version from API, installation will fail" && \
+        exit 1; \
     fi \
-    && echo "Installing Kustomize version: $KUSTOMIZE_VERSION" \
+    && echo "Installing Kustomize version: v$KUSTOMIZE_VERSION" \
     && ARCH=$(dpkg --print-architecture) \
     && case $ARCH in \
         amd64) KUSTOMIZE_ARCH="linux_amd64" ;; \
         arm64) KUSTOMIZE_ARCH="linux_arm64" ;; \
         *) echo "Unsupported architecture: $ARCH" && exit 1 ;; \
     esac \
-    && wget -O kustomize.tar.gz "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_${KUSTOMIZE_ARCH}.tar.gz" \
+    && wget -O kustomize.tar.gz "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv${KUSTOMIZE_VERSION}/kustomize_v${KUSTOMIZE_VERSION}_${KUSTOMIZE_ARCH}.tar.gz" \
     && tar -xzf kustomize.tar.gz \
     && mv kustomize /usr/local/bin/ \
     && chmod +x /usr/local/bin/kustomize \
     && rm kustomize.tar.gz
 
-# Install Go (latest stable)
-RUN for i in 1 2 3; do \
-        GO_VERSION=$(curl -s https://go.dev/VERSION?m=text | head -1) && break || sleep 30; \
-    done \
+# Install Go (latest stable) - Use direct API, more reliable than GitHub
+RUN GO_VERSION=$(curl -s https://go.dev/VERSION?m=text | head -1) \
     && if [ -z "$GO_VERSION" ]; then \
-        echo "Failed to get Go version, using fallback" && \
-        GO_VERSION="go1.23.4"; \
+        echo "Failed to get Go version from official API, installation will fail" && \
+        exit 1; \
     fi \
     && echo "Installing Go version: $GO_VERSION" \
     && ARCH=$(dpkg --print-architecture) \
@@ -149,30 +145,11 @@ RUN for i in 1 2 3; do \
 # Add Go to PATH
 ENV PATH="/usr/local/go/bin:${PATH}"
 
-# Install Node.js and npm (latest LTS)
-RUN for i in 1 2 3; do \
-        NODE_VERSION=$(curl -s https://nodejs.org/dist/index.json | jq -r '[.[] | select(.lts != false)][0].version') && break || sleep 30; \
-    done \
-    && if [ -z "$NODE_VERSION" ]; then \
-        echo "Failed to get Node.js version, using NodeSource repository" && \
-        NODE_VERSION="20"; \
-    fi \
-    && if [[ "$NODE_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then \
-        echo "Installing Node.js version: $NODE_VERSION" && \
-        ARCH=$(dpkg --print-architecture) && \
-        case $ARCH in \
-            amd64) NODE_ARCH="x64" ;; \
-            arm64) NODE_ARCH="arm64" ;; \
-            *) echo "Unsupported architecture: $ARCH" && exit 1 ;; \
-        esac && \
-        curl -fsSL https://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}-linux-${NODE_ARCH}.tar.xz | tar -xJ -C /usr/local --strip-components=1; \
-    else \
-        echo "Using NodeSource repository for Node.js" && \
-        NODE_MAJOR="20" && \
-        curl -fsSL https://deb.nodesource.com/setup_${NODE_MAJOR}.x | bash - && \
-        apt-get install -y nodejs && \
-        rm -rf /var/lib/apt/lists/*; \
-    fi
+# Install Node.js and npm (latest LTS) - Use NodeSource as primary method
+RUN NODE_MAJOR="20" \
+    && curl -fsSL https://deb.nodesource.com/setup_${NODE_MAJOR}.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install MongoDB CLI tools
 RUN curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | gpg --dearmor -o /usr/share/keyrings/mongodb-server-7.0.gpg \
@@ -183,14 +160,13 @@ RUN curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | gpg --dearmor
 # Install Redis CLI
 RUN apt-get update && apt-get install -y redis-tools && rm -rf /var/lib/apt/lists/*
 
-# Install tools with latest versions using GitHub API with retry logic
-# yq (YAML processor)
+# Install yq (YAML processor) - Robust GitHub API handling
 RUN for i in 1 2 3; do \
         YQ_VERSION=$(curl -s --fail https://api.github.com/repos/mikefarah/yq/releases/latest | jq -r .tag_name) && break || sleep 30; \
     done \
     && if [ -z "$YQ_VERSION" ]; then \
-        echo "Failed to get yq version, using fallback" && \
-        YQ_VERSION="v4.44.3"; \
+        echo "Failed to get yq version from API, installation will fail" && \
+        exit 1; \
     fi \
     && echo "Installing yq version: $YQ_VERSION" \
     && ARCH=$(dpkg --print-architecture) \
@@ -200,47 +176,53 @@ RUN for i in 1 2 3; do \
 # xq (XML processor using yq)
 RUN ln -s /usr/local/bin/yq /usr/local/bin/xq
 
-# hcl2json for HCL processing
+# Install hcl2json - Robust GitHub API handling
 RUN for i in 1 2 3; do \
         HCL2JSON_VERSION=$(curl -s --fail https://api.github.com/repos/tmccombs/hcl2json/releases/latest | jq -r .tag_name) && break || sleep 30; \
     done \
     && if [ -z "$HCL2JSON_VERSION" ]; then \
-        echo "Failed to get hcl2json version, using fallback" && \
-        HCL2JSON_VERSION="v0.6.3"; \
+        echo "Failed to get hcl2json version from API, installation will fail" && \
+        exit 1; \
     fi \
     && echo "Installing hcl2json version: $HCL2JSON_VERSION" \
     && ARCH=$(dpkg --print-architecture) \
     && wget https://github.com/tmccombs/hcl2json/releases/download/${HCL2JSON_VERSION}/hcl2json_linux_${ARCH} -O /usr/local/bin/hcl2json \
     && chmod +x /usr/local/bin/hcl2json
 
-# htmlq for HTML processing
+# Install htmlq - Fixed architecture mapping and error handling
 RUN for i in 1 2 3; do \
         HTMLQ_VERSION=$(curl -s --fail https://api.github.com/repos/mgdm/htmlq/releases/latest | jq -r .tag_name) && break || sleep 30; \
     done \
     && if [ -z "$HTMLQ_VERSION" ]; then \
-        echo "Failed to get htmlq version, using fallback" && \
-        HTMLQ_VERSION="v0.4.0"; \
+        echo "Failed to get htmlq version from API, installation will fail" && \
+        exit 1; \
     fi \
     && echo "Installing htmlq version: $HTMLQ_VERSION" \
-    && wget https://github.com/mgdm/htmlq/releases/download/${HTMLQ_VERSION}/htmlq-x86_64-linux.tar.gz \
-    && tar -xzf htmlq-x86_64-linux.tar.gz \
+    && ARCH=$(dpkg --print-architecture) \
+    && case $ARCH in \
+        amd64) HTMLQ_ARCH="x86_64" ;; \
+        arm64) HTMLQ_ARCH="aarch64" ;; \
+        *) echo "htmlq not available for architecture: $ARCH, skipping" && exit 0 ;; \
+    esac \
+    && wget -O htmlq.tar.gz https://github.com/mgdm/htmlq/releases/download/${HTMLQ_VERSION}/htmlq-${HTMLQ_ARCH}-linux.tar.gz \
+    && tar -xzf htmlq.tar.gz \
     && mv htmlq /usr/local/bin/ \
-    && rm htmlq-x86_64-linux.tar.gz
+    && rm htmlq.tar.gz
 
-# dasel (universal data processor)
+# Install dasel - Robust GitHub API handling
 RUN for i in 1 2 3; do \
         DASEL_VERSION=$(curl -s --fail https://api.github.com/repos/TomWright/dasel/releases/latest | jq -r .tag_name) && break || sleep 30; \
     done \
     && if [ -z "$DASEL_VERSION" ]; then \
-        echo "Failed to get dasel version, using fallback" && \
-        DASEL_VERSION="v2.8.1"; \
+        echo "Failed to get dasel version from API, installation will fail" && \
+        exit 1; \
     fi \
     && echo "Installing dasel version: $DASEL_VERSION" \
     && ARCH=$(dpkg --print-architecture) \
     && wget https://github.com/TomWright/dasel/releases/download/${DASEL_VERSION}/dasel_linux_${ARCH} -O /usr/local/bin/dasel \
     && chmod +x /usr/local/bin/dasel
 
-# Install AWS CLI v2
+# Install AWS CLI v2 - Direct from AWS (no GitHub API)
 RUN ARCH=$(dpkg --print-architecture) \
     && case $ARCH in \
         amd64) AWS_ARCH="x86_64" ;; \
@@ -252,25 +234,25 @@ RUN ARCH=$(dpkg --print-architecture) \
     && ./aws/install \
     && rm -rf aws awscliv2.zip
 
-# Install Azure CLI
+# Install Azure CLI - Use official repository
 RUN curl -sL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-archive-keyring.gpg \
     && echo "deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/microsoft-archive-keyring.gpg] https://packages.microsoft.com/repos/azure-cli/ $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/azure-cli.list \
     && apt-get update && apt-get install -y azure-cli \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Google Cloud CLI
+# Install Google Cloud CLI - Use official repository
 RUN curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg \
     && echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list \
     && apt-get update && apt-get install -y google-cloud-cli \
     && rm -rf /var/lib/apt/lists/*
 
-# Install DigitalOcean CLI (doctl) - latest version
+# Install DigitalOcean CLI (doctl) - Robust GitHub API handling
 RUN for i in 1 2 3; do \
         DOCTL_VERSION=$(curl -s --fail https://api.github.com/repos/digitalocean/doctl/releases/latest | jq -r .tag_name | sed 's/v//') && break || sleep 30; \
     done \
     && if [ -z "$DOCTL_VERSION" ]; then \
-        echo "Failed to get doctl version, using fallback" && \
-        DOCTL_VERSION="1.117.0"; \
+        echo "Failed to get doctl version from API, installation will fail" && \
+        exit 1; \
     fi \
     && echo "Installing doctl version: $DOCTL_VERSION" \
     && ARCH=$(dpkg --print-architecture) \
@@ -279,7 +261,7 @@ RUN for i in 1 2 3; do \
     && mv doctl /usr/local/bin \
     && rm doctl-${DOCTL_VERSION}-linux-${ARCH}.tar.gz
 
-# Install PowerShell
+# Install PowerShell - Use official repository
 RUN wget -q "https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb" \
     && dpkg -i packages-microsoft-prod.deb \
     && apt-get update \
@@ -287,19 +269,19 @@ RUN wget -q "https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/pac
     && rm packages-microsoft-prod.deb \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Docker CLI
+# Install Docker CLI - Use official repository
 RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list \
     && apt-get update && apt-get install -y docker-ce-cli \
     && rm -rf /var/lib/apt/lists/*
 
-# Install containerd CLI tools - latest version
+# Install containerd CLI tools - Robust GitHub API handling
 RUN for i in 1 2 3; do \
         CONTAINERD_VERSION=$(curl -s --fail https://api.github.com/repos/containerd/containerd/releases/latest | jq -r .tag_name | sed 's/v//') && break || sleep 30; \
     done \
     && if [ -z "$CONTAINERD_VERSION" ]; then \
-        echo "Failed to get containerd version, using fallback" && \
-        CONTAINERD_VERSION="1.7.22"; \
+        echo "Failed to get containerd version from API, installation will fail" && \
+        exit 1; \
     fi \
     && echo "Installing containerd version: $CONTAINERD_VERSION" \
     && ARCH=$(dpkg --print-architecture) \
@@ -307,13 +289,13 @@ RUN for i in 1 2 3; do \
     && tar Cxzvf /usr/local containerd-${CONTAINERD_VERSION}-linux-${ARCH}.tar.gz \
     && rm containerd-${CONTAINERD_VERSION}-linux-${ARCH}.tar.gz
 
-# Install nerdctl - latest version
+# Install nerdctl - Robust GitHub API handling
 RUN for i in 1 2 3; do \
         NERDCTL_VERSION=$(curl -s --fail https://api.github.com/repos/containerd/nerdctl/releases/latest | jq -r .tag_name | sed 's/v//') && break || sleep 30; \
     done \
     && if [ -z "$NERDCTL_VERSION" ]; then \
-        echo "Failed to get nerdctl version, using fallback" && \
-        NERDCTL_VERSION="1.7.7"; \
+        echo "Failed to get nerdctl version from API, installation will fail" && \
+        exit 1; \
     fi \
     && echo "Installing nerdctl version: $NERDCTL_VERSION" \
     && ARCH=$(dpkg --print-architecture) \
@@ -321,13 +303,13 @@ RUN for i in 1 2 3; do \
     && tar Cxzvf /usr/local/bin nerdctl-${NERDCTL_VERSION}-linux-${ARCH}.tar.gz \
     && rm nerdctl-${NERDCTL_VERSION}-linux-${ARCH}.tar.gz
 
-# Install crictl - latest version
+# Install crictl - Robust GitHub API handling
 RUN for i in 1 2 3; do \
         CRICTL_VERSION=$(curl -s --fail https://api.github.com/repos/kubernetes-sigs/cri-tools/releases/latest | jq -r .tag_name) && break || sleep 30; \
     done \
     && if [ -z "$CRICTL_VERSION" ]; then \
-        echo "Failed to get crictl version, using fallback" && \
-        CRICTL_VERSION="v1.31.1"; \
+        echo "Failed to get crictl version from API, installation will fail" && \
+        exit 1; \
     fi \
     && echo "Installing crictl version: $CRICTL_VERSION" \
     && ARCH=$(dpkg --print-architecture) \
@@ -335,33 +317,21 @@ RUN for i in 1 2 3; do \
     && tar zxvf crictl-${CRICTL_VERSION}-linux-${ARCH}.tar.gz -C /usr/local/bin \
     && rm -f crictl-${CRICTL_VERSION}-linux-${ARCH}.tar.gz
 
-# Install kubectx and kubens
+# Install kubectx and kubens - Direct git clone (most reliable)
 RUN git clone --depth 1 https://github.com/ahmetb/kubectx /opt/kubectx \
     && ln -s /opt/kubectx/kubectx /usr/local/bin/kubectx \
     && ln -s /opt/kubectx/kubens /usr/local/bin/kubens
 
-# Install Pulumi - latest version
-RUN for i in 1 2 3; do \
-        PULUMI_VERSION=$(curl -s --fail https://api.github.com/repos/pulumi/pulumi/releases/latest | jq -r .tag_name) && break || sleep 30; \
-    done \
-    && if [ -z "$PULUMI_VERSION" ]; then \
-        echo "Failed to get Pulumi version, using fallback" && \
-        PULUMI_VERSION="v3.140.0"; \
-    fi \
-    && echo "Installing Pulumi version: $PULUMI_VERSION" \
-    && ARCH=$(dpkg --print-architecture) \
-    && wget https://github.com/pulumi/pulumi/releases/download/${PULUMI_VERSION}/pulumi-${PULUMI_VERSION}-linux-${ARCH}.tar.gz \
-    && tar -xzf pulumi-${PULUMI_VERSION}-linux-${ARCH}.tar.gz \
-    && mv pulumi/* /usr/local/bin/ \
-    && rm -rf pulumi pulumi-${PULUMI_VERSION}-linux-${ARCH}.tar.gz
+# Install Pulumi - Use official installer (most reliable)
+RUN curl -fsSL https://get.pulumi.com | sh \
+    && mv /root/.pulumi/bin/pulumi /usr/local/bin/ \
+    && rm -rf /root/.pulumi
 
-# Install Packer - latest version
-RUN for i in 1 2 3; do \
-        PACKER_VERSION=$(curl -s --fail https://api.github.com/repos/hashicorp/packer/releases/latest | jq -r .tag_name | sed 's/v//') && break || sleep 30; \
-    done \
+# Install Packer - Use HashiCorp releases (not GitHub API)
+RUN PACKER_VERSION=$(curl -s https://releases.hashicorp.com/packer/ | grep -o 'packer_[0-9]*\.[0-9]*\.[0-9]*' | head -1 | cut -d'_' -f2) \
     && if [ -z "$PACKER_VERSION" ]; then \
-        echo "Failed to get Packer version, using fallback" && \
-        PACKER_VERSION="1.11.2"; \
+        echo "Failed to get Packer version from HashiCorp releases, installation will fail" && \
+        exit 1; \
     fi \
     && echo "Installing Packer version: $PACKER_VERSION" \
     && ARCH=$(dpkg --print-architecture) \
@@ -370,28 +340,16 @@ RUN for i in 1 2 3; do \
     && mv packer /usr/local/bin/ \
     && rm packer_${PACKER_VERSION}_linux_${ARCH}.zip
 
-# Install Flux CLI - latest version
-RUN for i in 1 2 3; do \
-        FLUX_VERSION=$(curl -s --fail https://api.github.com/repos/fluxcd/flux2/releases/latest | jq -r .tag_name) && break || sleep 30; \
-    done \
-    && if [ -z "$FLUX_VERSION" ]; then \
-        echo "Failed to get Flux version, using fallback" && \
-        FLUX_VERSION="v2.4.0"; \
-    fi \
-    && echo "Installing Flux version: $FLUX_VERSION" \
-    && ARCH=$(dpkg --print-architecture) \
-    && wget https://github.com/fluxcd/flux2/releases/download/${FLUX_VERSION}/flux_${FLUX_VERSION:1}_linux_${ARCH}.tar.gz \
-    && tar -xzf flux_${FLUX_VERSION:1}_linux_${ARCH}.tar.gz \
-    && mv flux /usr/local/bin/ \
-    && rm flux_${FLUX_VERSION:1}_linux_${ARCH}.tar.gz
+# Install Flux CLI - Use official installer script (most reliable)
+RUN curl -s https://fluxcd.io/install.sh | bash
 
-# Install ArgoCD CLI - latest version
+# Install ArgoCD CLI - Robust GitHub API handling
 RUN for i in 1 2 3; do \
         ARGO_VERSION=$(curl -s --fail https://api.github.com/repos/argoproj/argo-cd/releases/latest | jq -r .tag_name) && break || sleep 30; \
     done \
     && if [ -z "$ARGO_VERSION" ]; then \
-        echo "Failed to get ArgoCD version, using fallback" && \
-        ARGO_VERSION="v2.13.1"; \
+        echo "Failed to get ArgoCD version from API, installation will fail" && \
+        exit 1; \
     fi \
     && echo "Installing ArgoCD version: $ARGO_VERSION" \
     && ARCH=$(dpkg --print-architecture) \
@@ -399,30 +357,22 @@ RUN for i in 1 2 3; do \
     && mv argocd-linux-${ARCH} /usr/local/bin/argocd \
     && chmod +x /usr/local/bin/argocd
 
-# Install Jenkins CLI
+# Install Jenkins CLI - Direct download (no version management needed)
 RUN wget https://repo.jenkins-ci.org/public/org/jenkins-ci/main/cli/2.426/cli-2.426.jar -O /usr/local/bin/jenkins-cli.jar
 
-# Install Skaffold - latest version
-RUN for i in 1 2 3; do \
-        SKAFFOLD_VERSION=$(curl -s --fail https://api.github.com/repos/GoogleContainerTools/skaffold/releases/latest | jq -r .tag_name) && break || sleep 30; \
-    done \
-    && if [ -z "$SKAFFOLD_VERSION" ]; then \
-        echo "Failed to get Skaffold version, using fallback" && \
-        SKAFFOLD_VERSION="v2.13.2"; \
-    fi \
-    && echo "Installing Skaffold version: $SKAFFOLD_VERSION" \
-    && ARCH=$(dpkg --print-architecture) \
-    && curl -Lo skaffold https://storage.googleapis.com/skaffold/releases/${SKAFFOLD_VERSION}/skaffold-linux-${ARCH} \
+# Install Skaffold - Use Google Cloud Storage (more reliable than GitHub)
+RUN ARCH=$(dpkg --print-architecture) \
+    && curl -Lo skaffold https://storage.googleapis.com/skaffold/releases/latest/skaffold-linux-${ARCH} \
     && install skaffold /usr/local/bin/ \
     && rm skaffold
 
-# Install SOPS - latest version
+# Install SOPS - Robust GitHub API handling
 RUN for i in 1 2 3; do \
         SOPS_VERSION=$(curl -s --fail https://api.github.com/repos/getsops/sops/releases/latest | jq -r .tag_name) && break || sleep 30; \
     done \
     && if [ -z "$SOPS_VERSION" ]; then \
-        echo "Failed to get SOPS version, using fallback" && \
-        SOPS_VERSION="v3.9.1"; \
+        echo "Failed to get SOPS version from API, installation will fail" && \
+        exit 1; \
     fi \
     && echo "Installing SOPS version: $SOPS_VERSION" \
     && ARCH=$(dpkg --print-architecture) \
@@ -430,13 +380,13 @@ RUN for i in 1 2 3; do \
     && mv sops-${SOPS_VERSION}.linux.${ARCH} /usr/local/bin/sops \
     && chmod +x /usr/local/bin/sops
 
-# Install OpenBao - latest version
+# Install OpenBao - Robust GitHub API handling
 RUN for i in 1 2 3; do \
         OPENBAO_VERSION=$(curl -s --fail https://api.github.com/repos/openbao/openbao/releases/latest | jq -r .tag_name | sed 's/v//') && break || sleep 30; \
     done \
     && if [ -z "$OPENBAO_VERSION" ]; then \
-        echo "Failed to get OpenBao version, using fallback" && \
-        OPENBAO_VERSION="2.1.0"; \
+        echo "Failed to get OpenBao version from API, installation will fail" && \
+        exit 1; \
     fi \
     && echo "Installing OpenBao version: $OPENBAO_VERSION" \
     && ARCH=$(dpkg --print-architecture) \
@@ -444,13 +394,11 @@ RUN for i in 1 2 3; do \
     && dpkg -i bao_${OPENBAO_VERSION}_linux_${ARCH}.deb \
     && rm bao_${OPENBAO_VERSION}_linux_${ARCH}.deb
 
-# Install HashiCorp Vault (can coexist with OpenBao)
-RUN for i in 1 2 3; do \
-        VAULT_VERSION=$(curl -s --fail https://api.github.com/repos/hashicorp/vault/releases/latest | jq -r .tag_name | sed 's/v//') && break || sleep 30; \
-    done \
+# Install HashiCorp Vault - Use HashiCorp releases (not GitHub API)
+RUN VAULT_VERSION=$(curl -s https://releases.hashicorp.com/vault/ | grep -o 'vault_[0-9]*\.[0-9]*\.[0-9]*' | head -1 | cut -d'_' -f2) \
     && if [ -z "$VAULT_VERSION" ]; then \
-        echo "Failed to get Vault version, using fallback" && \
-        VAULT_VERSION="1.17.7"; \
+        echo "Failed to get Vault version from HashiCorp releases, installation will fail" && \
+        exit 1; \
     fi \
     && echo "Installing Vault version: $VAULT_VERSION" \
     && ARCH=$(dpkg --print-architecture) \
@@ -462,13 +410,13 @@ RUN for i in 1 2 3; do \
 # Install pass (password manager)
 RUN apt-get update && apt-get install -y pass && rm -rf /var/lib/apt/lists/*
 
-# Install Prometheus promtool - latest version
+# Install Prometheus promtool - Robust GitHub API handling
 RUN for i in 1 2 3; do \
         PROMETHEUS_VERSION=$(curl -s --fail https://api.github.com/repos/prometheus/prometheus/releases/latest | jq -r .tag_name | sed 's/v//') && break || sleep 30; \
     done \
     && if [ -z "$PROMETHEUS_VERSION" ]; then \
-        echo "Failed to get Prometheus version, using fallback" && \
-        PROMETHEUS_VERSION="2.55.1"; \
+        echo "Failed to get Prometheus version from API, installation will fail" && \
+        exit 1; \
     fi \
     && echo "Installing Prometheus promtool version: $PROMETHEUS_VERSION" \
     && ARCH=$(dpkg --print-architecture) \
@@ -482,13 +430,13 @@ RUN sh <(curl -L https://nixos.org/nix/install) --no-daemon \
     && echo '. /root/.nix-profile/etc/profile.d/nix.sh' >> /root/.bashrc \
     && echo '. /root/.nix-profile/etc/profile.d/nix.sh' >> /root/.zshrc
 
-# Install Talosctl - latest version
+# Install Talosctl - Robust GitHub API handling
 RUN for i in 1 2 3; do \
         TALOS_VERSION=$(curl -s --fail https://api.github.com/repos/siderolabs/talos/releases/latest | jq -r .tag_name) && break || sleep 30; \
     done \
     && if [ -z "$TALOS_VERSION" ]; then \
-        echo "Failed to get Talos version, using fallback" && \
-        TALOS_VERSION="v1.8.3"; \
+        echo "Failed to get Talos version from API, installation will fail" && \
+        exit 1; \
     fi \
     && echo "Installing Talosctl version: $TALOS_VERSION" \
     && ARCH=$(dpkg --print-architecture) \
@@ -496,20 +444,20 @@ RUN for i in 1 2 3; do \
     && mv talosctl-linux-${ARCH} /usr/local/bin/talosctl \
     && chmod +x /usr/local/bin/talosctl
 
-# Install k9s - latest version
+# Install k9s - Robust GitHub API handling
 RUN for i in 1 2 3; do \
         K9S_VERSION=$(curl -s --fail https://api.github.com/repos/derailed/k9s/releases/latest | jq -r .tag_name) && break || sleep 30; \
     done \
     && if [ -z "$K9S_VERSION" ]; then \
-        echo "Failed to get k9s version, using fallback" && \
-        K9S_VERSION="v0.32.7"; \
+        echo "Failed to get k9s version from API, installation will fail" && \
+        exit 1; \
     fi \
     && echo "Installing k9s version: $K9S_VERSION" \
     && ARCH=$(dpkg --print-architecture) \
     && curl -sL https://github.com/derailed/k9s/releases/download/${K9S_VERSION}/k9s_Linux_${ARCH}.tar.gz | tar xz -C /tmp \
     && mv /tmp/k9s /usr/local/bin/
 
-# Install DynamoDB Local
+# Install DynamoDB Local - Direct from AWS
 RUN mkdir -p /opt/dynamodb \
     && curl -L https://s3-us-west-2.amazonaws.com/dynamodb-local/dynamodb_local_latest.tar.gz | tar xz -C /opt/dynamodb
 
@@ -518,13 +466,13 @@ RUN pip3 install --no-cache-dir --break-system-packages \
     cqlsh \
     elasticsearch-cli
 
-# Install etcd client (etcdctl) - latest version
+# Install etcd client (etcdctl) - Robust GitHub API handling
 RUN for i in 1 2 3; do \
         ETCD_VER=$(curl -s --fail https://api.github.com/repos/etcd-io/etcd/releases/latest | jq -r .tag_name) && break || sleep 30; \
     done \
     && if [ -z "$ETCD_VER" ]; then \
-        echo "Failed to get etcd version, using fallback" && \
-        ETCD_VER="v3.5.17"; \
+        echo "Failed to get etcd version from API, installation will fail" && \
+        exit 1; \
     fi \
     && echo "Installing etcdctl version: $ETCD_VER" \
     && ARCH=$(dpkg --print-architecture) \
@@ -536,7 +484,7 @@ RUN for i in 1 2 3; do \
 # Install mc (Midnight Commander)
 RUN apt-get update && apt-get install -y mc && rm -rf /var/lib/apt/lists/*
 
-# Install Tailscale
+# Install Tailscale - Use official installer
 RUN curl -fsSL https://tailscale.com/install.sh | sh
 
 # Configure SSH
@@ -572,13 +520,20 @@ RUN echo 'source /etc/bash_completion' >> /root/.bashrc \
     && echo 'alias ot="tofu"' >> /root/.bashrc \
     && echo 'alias tf="terraform"' >> /root/.bashrc \
     && echo 'alias v="vault"' >> /root/.bashrc \
+    && echo 'alias kx="kubectx"' >> /root/.bashrc \
+    && echo 'alias kn="kubens"' >> /root/.bashrc \
     && echo '' >> /root/.bashrc \
     && echo '# Alias autocomplete setup' >> /root/.bashrc \
     && echo 'complete -o default -F __start_kubectl k' >> /root/.bashrc \
     && echo 'complete -o default -F _cli_bash_autocomplete t' >> /root/.bashrc \
     && echo 'complete -o default -F _helm h' >> /root/.bashrc \
     && echo 'complete -o default -F _cli_bash_autocomplete fcd' >> /root/.bashrc \
-    && echo 'complete -o default -F _cli_bash_autocomplete acd' >> /root/.bashrc
+    && echo 'complete -o default -F _cli_bash_autocomplete acd' >> /root/.bashrc \
+    && echo '# kubectx and kubens have built-in completion support' >> /root/.bashrc \
+    && echo 'source /opt/kubectx/completion/kubectx.bash' >> /root/.bashrc \
+    && echo 'source /opt/kubectx/completion/kubens.bash' >> /root/.bashrc \
+    && echo 'complete -o default -F _kubectx kx' >> /root/.bashrc \
+    && echo 'complete -o default -F _kubens kn' >> /root/.bashrc
 
 # Setup zsh completions and aliases
 RUN echo 'autoload -U compinit && compinit' >> /root/.zshrc \
@@ -603,6 +558,8 @@ RUN echo 'autoload -U compinit && compinit' >> /root/.zshrc \
     && echo 'alias ot="tofu"' >> /root/.zshrc \
     && echo 'alias tf="terraform"' >> /root/.zshrc \
     && echo 'alias v="vault"' >> /root/.zshrc \
+    && echo 'alias kx="kubectx"' >> /root/.zshrc \
+    && echo 'alias kn="kubens"' >> /root/.zshrc \
     && echo '' >> /root/.zshrc \
     && echo '# Alias autocomplete setup' >> /root/.zshrc \
     && echo 'compdef k=kubectl' >> /root/.zshrc \
@@ -612,7 +569,12 @@ RUN echo 'autoload -U compinit && compinit' >> /root/.zshrc \
     && echo 'compdef acd=argocd' >> /root/.zshrc \
     && echo 'compdef ot=tofu' >> /root/.zshrc \
     && echo 'compdef tf=terraform' >> /root/.zshrc \
-    && echo 'compdef v=vault' >> /root/.zshrc
+    && echo 'compdef v=vault' >> /root/.zshrc \
+    && echo '# kubectx and kubens have built-in zsh completion support' >> /root/.zshrc \
+    && echo 'source /opt/kubectx/completion/kubectx.zsh' >> /root/.zshrc \
+    && echo 'source /opt/kubectx/completion/kubens.zsh' >> /root/.zshrc \
+    && echo 'compdef kx=kubectx' >> /root/.zshrc \
+    && echo 'compdef kn=kubens' >> /root/.zshrc
 
 # Create directories for mounted volumes
 RUN mkdir -p /root/config /etc/fstab.d
