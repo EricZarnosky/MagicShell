@@ -447,11 +447,6 @@ RUN for i in 1 2 3; do \
     && mv prometheus-${PROMETHEUS_VERSION}.linux-${ARCH}/promtool /usr/local/bin/ \
     && rm -rf prometheus-${PROMETHEUS_VERSION}.linux-${ARCH}*
 
-# Install Nix package manager (single-user mode for container)
-RUN curl -L https://nixos.org/nix/install | sh -s -- --no-daemon \
-    && echo '. /root/.nix-profile/etc/profile.d/nix.sh' >> /root/.bashrc \
-    && echo '. /root/.nix-profile/etc/profile.d/nix.sh' >> /root/.zshrc
-
 # Install Talosctl - Robust GitHub API handling
 RUN for i in 1 2 3; do \
         TALOS_VERSION=$(curl -s --fail https://api.github.com/repos/siderolabs/talos/releases/latest | jq -r .tag_name) && break || sleep 30; \
