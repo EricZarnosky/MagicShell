@@ -67,3 +67,13 @@ cache/
 *.bak
 *.backup
 *~
+
+# Build artifacts
+*.tar.gz
+*.zip
+*.deb
+
+# Test files
+test/
+tests/
+*.test

@@ -1,15 +1,21 @@
 # MagicShell - Universal Infrastructure Management Container
 
-🎭 A comprehensive Ubuntu 24.04 LTS development container with pre-installed tools for DevOps, Kubernetes, and system administration.
+🎭 A comprehensive Ubuntu 24.04 LTS server minimal development container with pre-installed tools for DevOps, Kubernetes, and system administration.
 
 **Repository**: https://github.com/EricZarnosky/MagicShell
 
 ## Features
 
+### Base Image Optimization
+- **Ubuntu 24.04 LTS Server Minimal**: Optimized base image for reduced container size
+- **Multi-architecture Support**: Built for both AMD64 and ARM64 platforms
+- **Fixed Tool Versions**: Uses specific versions to avoid GitHub API rate limits during builds
+- **Layer Optimization**: Minimized layers and cleaned up package caches for smaller image size
+
 ### Installed Tools
 - **System Tools**: openssh, git, nano, vim, neovim, tmux, screen, mc, rsync, fzf, ripgrep
 - **Shells**: bash (with completion), zsh (with Oh My Zsh and completions)
-- **DevOps Tools**: opentofu, kubectl, helm, kustomize, k9s, ansible, packer, pulumi
+- **DevOps Tools**: opentofu, terraform, kubectl, helm, kustomize, k9s, ansible, packer, pulumi
 - **Kubernetes**: talosctl, kubectx, kubens, flux, argocd, skaffold
 - **Container Tools**: docker-cli, nerdctl, crictl, containerd
 - **Programming Languages**: Python 3 (with pip), Go, Node.js (with npm, for JavaScript)
@@ -24,7 +30,7 @@
   - **SQL**: postgresql-client, mysql-client, sqlite3
   - **NoSQL**: mongosh, mongodb-database-tools, redis-tools, cqlsh (Cassandra), etcdctl
   - **Search**: elasticsearch-cli
-- **Security & Secrets**: sops, openbao, pass, gpg
+- **Security & Secrets**: sops, openbao, vault, pass, gpg
 - **Monitoring**: promtool (Prometheus)
 - **CI/CD**: jenkins-cli, flux, argocd, skaffold
 - **File Systems**: NFS and SMB/CIFS support
@@ -219,7 +225,48 @@ To enable Tailscale:
 2. After first run, authenticate: `docker exec -it magicshell tailscale up`
 3. Authentication state persists in `./config/tailscale-state/`
 
-## Usage Examples
+## Aliases and Shortcuts
+
+The container includes convenient aliases for commonly used tools with full autocomplete support:
+
+### Available Aliases
+| Alias | Command | Description |
+|-------|---------|-------------|
+| `k` | `kubectl` | Kubernetes CLI |
+| `t` | `talosctl` | Talos Linux CLI |
+| `h` | `helm` | Helm package manager |
+| `kz` | `kustomize` | Kubernetes configuration customization |
+| `fcd` | `flux` | Flux GitOps toolkit |
+| `acd` | `argocd` | ArgoCD CLI |
+| `ot` | `tofu` | OpenTofu (Terraform alternative) |
+| `tf` | `terraform` | Terraform |
+| `v` | `vault` | HashiCorp Vault |
+
+### Autocomplete Support
+All aliases include full autocomplete support in both Bash and Zsh:
+- **Bash**: Uses `complete` functions to map alias completions to original commands
+- **Zsh**: Uses `compdef` to associate alias completions with original commands
+
+### Usage Examples
+```bash
+# These commands are equivalent and both have autocomplete:
+kubectl get pods
+k get pods
+
+# Helm with autocomplete
+helm install my-app ./chart
+h install my-app ./chart
+
+# Terraform/OpenTofu with autocomplete
+terraform plan
+tf plan
+tofu plan
+ot plan
+
+# Vault operations
+vault status
+v status
+```
 
 ### SSH Access
 ```bash
@@ -296,10 +343,12 @@ docker exec -it magicshell docker -H tcp://remote-host:2376 ps
 docker exec -it magicshell kubectx production
 docker exec -it magicshell kubens kube-system
 
-# Kubernetes tools
+# Kubernetes tools with aliases
 docker exec -it magicshell kubectl get nodes
+docker exec -it magicshell k get pods  # Using alias
 docker exec -it magicshell k9s
 docker exec -it magicshell flux get sources git
+docker exec -it magicshell fcd get sources git  # Using alias
 
 # Container runtime tools
 docker exec -it magicshell crictl ps
@@ -307,10 +356,19 @@ docker exec -it magicshell nerdctl ps
 
 # Helm operations
 docker exec -it magicshell helm list
-docker exec -it magicshell helm install myapp ./chart
+docker exec -it magicshell h install myapp ./chart  # Using alias
 
 # Talos Linux
 docker exec -it magicshell talosctl config endpoint 10.0.0.1
+docker exec -it magicshell t version  # Using alias
+
+# Kustomize
+docker exec -it magicshell kustomize build .
+docker exec -it magicshell kz build .  # Using alias
+
+# ArgoCD
+docker exec -it magicshell argocd app list
+docker exec -it magicshell acd app sync myapp  # Using alias
 ```
 
 ### Infrastructure as Code
@@ -319,6 +377,13 @@ docker exec -it magicshell talosctl config endpoint 10.0.0.1
 docker exec -it magicshell tofu init
 docker exec -it magicshell tofu plan
 docker exec -it magicshell tofu apply
+docker exec -it magicshell ot version  # Using alias
+
+# Terraform
+docker exec -it magicshell terraform init
+docker exec -it magicshell terraform plan
+docker exec -it magicshell terraform apply
+docker exec -it magicshell tf version  # Using alias
 
 # Pulumi
 docker exec -it magicshell pulumi up
@@ -333,6 +398,12 @@ docker exec -it magicshell packer build template.json
 docker exec -it magicshell bao server -dev
 docker exec -it magicshell bao login
 docker exec -it magicshell bao kv put secret/myapp password=secret
+
+# HashiCorp Vault
+docker exec -it magicshell vault server -dev
+docker exec -it magicshell vault login
+docker exec -it magicshell vault kv put secret/myapp password=secret
+docker exec -it magicshell v status  # Using alias
 
 # SOPS (encrypted files)
 docker exec -it magicshell sops -e secrets.yaml
@@ -434,11 +505,18 @@ MagicShell/
 
 ## Automated Builds
 
-The container is automatically built and published to GitHub Container Registry on every push to main:
+The container is automatically built and published to GitHub Container Registry with optimized multi-platform builds:
 
 - **Latest builds**: `ghcr.io/ericzarnosky/magicshell:latest`
 - **Date-tagged builds**: `ghcr.io/ericzarnosky/magicshell:YYYY.MM.DD-<commit>`
 - **Version tags**: `ghcr.io/ericzarnosky/magicshell:v1.0.0` (when you tag releases)
+
+### Build Optimizations
+- **Multi-platform builds**: Supports both AMD64 and ARM64 architectures
+- **Parallel builds**: Uses matrix strategy for faster build times
+- **Latest tool versions**: Automatically installs current releases with retry logic for reliability
+- **Optimized caching**: Uses GitHub Actions cache for faster subsequent builds
+- **Smart fallbacks**: Uses known-good versions if GitHub API calls fail
 
 ### Available Tags
 - `:latest` - Latest build from main branch
@@ -454,20 +532,46 @@ The container is automatically built and published to GitHub Container Registry 
 4. **Network access** - Container runs in host network mode for Tailscale compatibility
 5. **Privileged mode** - Required for NFS/SMB mounting and Tailscale
 
-## Latest Versions
+## Tool Versions (Latest with Reliability)
 
-All tools are automatically installed with their latest versions at build time:
+All tools automatically install the latest versions with intelligent retry logic to handle GitHub API rate limits:
 
-- **Go**: Latest stable from https://go.dev/VERSION?m=text
-- **Node.js**: Latest LTS from nodejs.org API
-- **OpenTofu**: Latest stable release
-- **Kubernetes tools**: Latest from GitHub releases API
-- **Cloud tools**: Latest from official repositories
-- **Security tools**: Latest from GitHub releases API
+### Version Management Strategy
+- **Latest Versions**: Always installs the most current release of each tool
+- **Retry Logic**: GitHub API calls retry 3 times with 30-second delays to handle rate limits
+- **Fallback Versions**: If API calls fail, uses recent known-good versions as fallbacks
+- **Multi-Architecture**: Automatically detects and installs correct binaries for AMD64 and ARM64
 
-This ensures you always have the most current versions with latest features and security updates.
+### Core Tools (Always Latest)
+- **Kustomize**: Latest release (fallback: v5.5.0)
+- **Go**: Latest stable (fallback: go1.23.4)
+- **Node.js**: Latest LTS (fallback: v20)
+- **yq**: Latest release (fallback: v4.44.3)
+- **Flux**: Latest release (fallback: v2.4.0)
+- **ArgoCD**: Latest release (fallback: v2.13.1)
+- **Pulumi**: Latest release (fallback: v3.140.0)
+- **k9s**: Latest release (fallback: v0.32.7)
+- **Talosctl**: Latest release (fallback: v1.8.3)
+- **And many more...**
+
+### Benefits
+- **Latest Features**: Always get the newest capabilities and improvements
+- **Security Updates**: Automatic inclusion of latest security patches
+- **Build Reliability**: Retry logic prevents GitHub API rate limit failures
+- **No Maintenance**: No need to manually update version numbers in Dockerfile
+
+To see all installed versions in your running container:
+```bash
+docker exec -it magicshell huh
+```
 
 ## Troubleshooting
+
+### Build Issues
+- **GitHub API Rate Limits**: Retry logic with fallback versions prevents this issue
+- **Multi-platform Support**: ARM64 builds may take longer but are fully supported
+- **Network Issues**: Ensure Docker daemon has internet access during build
+- **API Failures**: Builds will use fallback versions if GitHub API is unavailable
 
 ### SSH Connection Issues
 - Verify port mapping: `docker-compose ps`
@@ -593,11 +697,23 @@ jobs:
 
 ## Open Source Tools
 
-MagicShell uses fully open source alternatives to proprietary tools:
+MagicShell includes both open source alternatives and original tools for maximum compatibility:
 
-- **OpenTofu** instead of Terraform (license-free IaC)
-- **OpenBao** instead of HashiCorp Vault (open source secrets management)
-- All other tools are open source or have permissive licenses
+### Infrastructure as Code
+- **OpenTofu** - Open source Terraform alternative (license-free)
+- **Terraform** - Original HashiCorp Terraform (both tools coexist)
+- Both tools can be used side-by-side with separate state files
+
+### Secrets Management  
+- **OpenBao** - Open source Vault alternative
+- **HashiCorp Vault** - Original Vault (both tools coexist)
+- Both tools can run simultaneously on different ports
+
+### Compatibility
+- **Coexistence**: Tools are installed to separate binaries and can run together
+- **Command Compatibility**: Both tool pairs use similar command structures
+- **Migration**: Easy to migrate between tools or use both as needed
+- **Aliases**: Convenient shortcuts available for all tools
 
 ## Contributing
 

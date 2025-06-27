@@ -3,7 +3,7 @@
 # huh - Tool version information display script
 # Usage: huh [--app|-a <app_name>] [--help|-h]
 
-VERSION="1.0.0"
+VERSION="1.1.0"
 SCRIPT_NAME="huh"
 
 # Color codes for output
@@ -56,6 +56,18 @@ get_version() {
                 ;;
             "pwsh")
                 pwsh --version 2>&1 | head -1
+                ;;
+            "terraform")
+                terraform version 2>&1 | head -1
+                ;;
+            "tofu")
+                tofu version 2>&1 | head -1
+                ;;
+            "vault")
+                vault version 2>&1 | head -1
+                ;;
+            "bao")
+                bao version 2>&1 | head -1
                 ;;
             *)
                 $cmd $version_flag 2>&1 | head -1
@@ -218,6 +230,7 @@ show_all_versions() {
     # Infrastructure as Code
     print_header "Infrastructure as Code"
     printf "%-20s %s\n" "opentofu:" "$(get_version tofu)"
+    printf "%-20s %s\n" "terraform:" "$(get_version terraform)"
     printf "%-20s %s\n" "pulumi:" "$(get_version pulumi)"
     printf "%-20s %s\n" "packer:" "$(get_version packer)"
     printf "%-20s %s\n" "ansible:" "$(get_version ansible)"
@@ -238,6 +251,7 @@ show_all_versions() {
     # Security & Secrets
     print_header "Security & Secrets Management"
     printf "%-20s %s\n" "openbao:" "$(get_version bao)"
+    printf "%-20s %s\n" "vault:" "$(get_version vault)"
     printf "%-20s %s\n" "sops:" "$(get_version sops)"
     printf "%-20s %s\n" "pass:" "$(get_version pass)"
     printf "%-20s %s\n" "gpg:" "$(get_version gpg)"
@@ -277,10 +291,27 @@ show_all_versions() {
     printf "%-20s %s\n" "nix:" "$(get_version nix-env)"
     printf "%-20s %s\n" "tailscale:" "$(get_version tailscale)"
     
+    # Show aliases
+    print_header "Available Aliases"
+    print_color "$YELLOW" "Kubernetes & Tools:"
+    printf "%-20s %s\n" "k" "kubectl"
+    printf "%-20s %s\n" "t" "talosctl"
+    printf "%-20s %s\n" "h" "helm"
+    printf "%-20s %s\n" "kz" "kustomize"
+    print_color "$YELLOW" "GitOps & CI/CD:"
+    printf "%-20s %s\n" "fcd" "flux"
+    printf "%-20s %s\n" "acd" "argocd"
+    print_color "$YELLOW" "Infrastructure:"
+    printf "%-20s %s\n" "ot" "tofu (OpenTofu)"
+    printf "%-20s %s\n" "tf" "terraform"
+    print_color "$YELLOW" "Security:"
+    printf "%-20s %s\n" "v" "vault"
+    
     echo
     print_color "$GREEN" "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     print_color "$YELLOW" "💡 Tip: Use 'huh --app <tool_name>' for detailed information about a specific tool"
-    print_color "$YELLOW" "    Example: huh --app kubectl"
+    print_color "$YELLOW" "    Example: huh --app kubectl, huh --app terraform, huh --app vault"
+    print_color "$CYAN" "🎯 All aliases include full autocomplete support in both Bash and Zsh!"
     print_color "$GREEN" "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo
 }
@@ -291,26 +322,33 @@ show_help() {
 Usage: $SCRIPT_NAME [OPTIONS]
 
 OPTIONS:
-    (no args)           Show versions of all installed tools
+    (no args)           Show versions of all installed tools and aliases
     --app, -a <name>    Show detailed information about a specific tool
     --help, -h          Show this help message
     --version, -v       Show script version
 
 EXAMPLES:
-    $SCRIPT_NAME                    # Show all tool versions
+    $SCRIPT_NAME                    # Show all tool versions and aliases
     $SCRIPT_NAME --app kubectl     # Show detailed kubectl information
     $SCRIPT_NAME -a terraform      # Show detailed terraform information
+    $SCRIPT_NAME --app vault       # Show detailed vault information
 
 SUPPORTED TOOLS:
     Languages: python3, pip3, go, node, npm, pwsh
     Kubernetes: kubectl, helm, k9s, kustomize, kubectx, kubens, talosctl
     Containers: docker, nerdctl, crictl
-    IaC: opentofu, pulumi, packer, ansible
+    IaC: opentofu (tofu), terraform, pulumi, packer, ansible
     Cloud: aws, az, gcloud, doctl
     CI/CD: flux, argocd, skaffold
-    Security: openbao, sops, pass, gpg
+    Security: openbao (bao), vault, sops, pass, gpg
     Databases: psql, mysql, mongosh, redis-cli, sqlite3, cqlsh, etcdctl, elasticsearch-cli
     Utils: jq, yq, xq, hcl2json, htmlq, dasel, http, fzf, rg, promtool, tailscale, nix-env, jenkins-cli
+
+AVAILABLE ALIASES:
+    k=kubectl, t=talosctl, h=helm, kz=kustomize, fcd=flux, acd=argocd
+    ot=tofu, tf=terraform, v=vault
+    
+    All aliases include full autocomplete support!
 "
 }
 
@@ -339,3 +377,5 @@ case "$1" in
         exit 1
         ;;
 esac
+    
+    echo
