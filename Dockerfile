@@ -84,10 +84,12 @@ RUN curl -fsSL https://get.opentofu.org/opentofu.gpg -o /etc/apt/keyrings/opento
     && apt-get update && apt-get install -y tofu \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Terraform - Use HashiCorp releases (not GitHub API to avoid rate limits)
-RUN TERRAFORM_VERSION=$(curl -s https://releases.hashicorp.com/terraform/ | grep -o 'terraform_[0-9]*\.[0-9]*\.[0-9]*' | head -1 | cut -d'_' -f2) \
+# Install Terraform - Use GitHub releases API with retry logic
+RUN for i in 1 2 3; do \
+        TERRAFORM_VERSION=$(curl -s --fail https://api.github.com/repos/hashicorp/terraform/releases/latest | jq -r .tag_name | sed 's/v//') && break || sleep 30; \
+    done \
     && if [ -z "$TERRAFORM_VERSION" ]; then \
-        echo "Failed to get Terraform version from HashiCorp releases, installation will fail" && \
+        echo "Failed to get Terraform version from API, installation will fail" && \
         exit 1; \
     fi \
     && echo "Installing Terraform version: $TERRAFORM_VERSION" \
@@ -327,10 +329,12 @@ RUN curl -fsSL https://get.pulumi.com | sh \
     && mv /root/.pulumi/bin/pulumi /usr/local/bin/ \
     && rm -rf /root/.pulumi
 
-# Install Packer - Use HashiCorp releases (not GitHub API)
-RUN PACKER_VERSION=$(curl -s https://releases.hashicorp.com/packer/ | grep -o 'packer_[0-9]*\.[0-9]*\.[0-9]*' | head -1 | cut -d'_' -f2) \
+# Install Packer - Use GitHub releases API with retry logic
+RUN for i in 1 2 3; do \
+        PACKER_VERSION=$(curl -s --fail https://api.github.com/repos/hashicorp/packer/releases/latest | jq -r .tag_name | sed 's/v//') && break || sleep 30; \
+    done \
     && if [ -z "$PACKER_VERSION" ]; then \
-        echo "Failed to get Packer version from HashiCorp releases, installation will fail" && \
+        echo "Failed to get Packer version from API, installation will fail" && \
         exit 1; \
     fi \
     && echo "Installing Packer version: $PACKER_VERSION" \
@@ -394,10 +398,12 @@ RUN for i in 1 2 3; do \
     && dpkg -i bao_${OPENBAO_VERSION}_linux_${ARCH}.deb \
     && rm bao_${OPENBAO_VERSION}_linux_${ARCH}.deb
 
-# Install HashiCorp Vault - Use HashiCorp releases (not GitHub API)
-RUN VAULT_VERSION=$(curl -s https://releases.hashicorp.com/vault/ | grep -o 'vault_[0-9]*\.[0-9]*\.[0-9]*' | head -1 | cut -d'_' -f2) \
+# Install HashiCorp Vault - Use GitHub releases API with retry logic
+RUN for i in 1 2 3; do \
+        VAULT_VERSION=$(curl -s --fail https://api.github.com/repos/hashicorp/vault/releases/latest | jq -r .tag_name | sed 's/v//') && break || sleep 30; \
+    done \
     && if [ -z "$VAULT_VERSION" ]; then \
-        echo "Failed to get Vault version from HashiCorp releases, installation will fail" && \
+        echo "Failed to get Vault version from API, installation will fail" && \
         exit 1; \
     fi \
     && echo "Installing Vault version: $VAULT_VERSION" \
