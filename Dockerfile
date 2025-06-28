@@ -195,22 +195,21 @@ RUN for i in 1 2 3; do \
     && wget https://github.com/tmccombs/hcl2json/releases/download/${HCL2JSON_VERSION}/hcl2json_linux_${ARCH} -O /usr/local/bin/hcl2json \
     && chmod +x /usr/local/bin/hcl2json
 
-# Install htmlq - Fixed architecture mapping and error handling
+# Install htmlq - Skip for ARM64 or if download fails
 RUN for i in 1 2 3; do \
         HTMLQ_VERSION=$(curl -s --fail https://api.github.com/repos/mgdm/htmlq/releases/latest | jq -r .tag_name) && break || sleep 30; \
     done \
     && if [ -z "$HTMLQ_VERSION" ]; then \
-        echo "Failed to get htmlq version from API, installation will fail" && \
-        exit 1; \
+        echo "Failed to get htmlq version from API, skipping htmlq installation" && \
+        exit 0; \
     fi \
     && echo "Installing htmlq version: $HTMLQ_VERSION" \
     && ARCH=$(dpkg --print-architecture) \
     && case $ARCH in \
         amd64) HTMLQ_ARCH="x86_64" ;; \
-        arm64) HTMLQ_ARCH="aarch64" ;; \
         *) echo "htmlq not available for architecture: $ARCH, skipping" && exit 0 ;; \
     esac \
-    && wget -O htmlq.tar.gz https://github.com/mgdm/htmlq/releases/download/${HTMLQ_VERSION}/htmlq-${HTMLQ_ARCH}-linux.tar.gz \
+    && wget -O htmlq.tar.gz https://github.com/mgdm/htmlq/releases/download/${HTMLQ_VERSION}/htmlq-${HTMLQ_ARCH}-linux.tar.gz || { echo "htmlq download failed, skipping"; exit 0; } \
     && tar -xzf htmlq.tar.gz \
     && mv htmlq /usr/local/bin/ \
     && rm htmlq.tar.gz

@@ -57,7 +57,48 @@ services:
     devices:
       - /dev/fuse
 
+  # Ubuntu variant service
+  magicshell-ubuntu:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ghcr.io/ericzarnosky/magicshell:ubuntu
+    container_name: ${CONTAINER_NAME:-magicshell}-ubuntu
+    hostname: ${HOSTNAME:-MagicShell}-Ubuntu
+    restart: unless-stopped
+    profiles: ["ubuntu"]  # Only start with --profile ubuntu
+    
+    # Same configuration as main service
+    privileged: true
+    network_mode: host
+    
+    environment:
+      - PASSWORD=${PASSWORD:-password}
+      - PASSWORD_FILE=${PASSWORD_FILE:-}
+      - TZ=${TZ:-UTC}
+      - SHELL=${SHELL:-bash}
+      - HOSTNAME=${HOSTNAME:-MagicShell}-Ubuntu
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - ENABLE_TAILSCALE=${ENABLE_TAILSCALE:-false}
+    
+    volumes:
+      - ./config:/root/config
+      - ./config/fstab:/etc/fstab:ro
+    
+    ports:
+      - "${SSH_PORT:-2222}:22"
+    
+    cap_add:
+      - SYS_ADMIN
+      - NET_ADMIN
+      - DAC_READ_SEARCH
+    
+    devices:
+      - /dev/fuse
+
 # Uncomment to use Docker secrets for password
 # secrets:
 #   root_password:
+#     file: ./secrets/root_password.txtd:
 #     file: ./secrets/root_password.txt
