@@ -1,42 +1,158 @@
 # MagicShell - Universal Infrastructure Management Container
 
-🎭 A comprehensive Ubuntu 24.04 LTS server minimal development container with pre-installed tools for DevOps, Kubernetes, and system administration.
+🎭 A comprehensive Arch Linux development container with pre-installed tools for DevOps, Kubernetes, and system administration.
 
 **Repository**: https://github.com/EricZarnosky/MagicShell
 
 ## Features
 
 ### Base Image Optimization
-- **Ubuntu 24.04 LTS Server Minimal**: Optimized base image for reduced container size
-- **Multi-architecture Support**: Built for both AMD64 and ARM64 platforms
-- **Fixed Tool Versions**: Uses specific versions to avoid GitHub API rate limits during builds
-- **Layer Optimization**: Minimized layers and cleaned up package caches for smaller image size
+- **Arch Linux Rolling Release**: Always up-to-date packages and latest features
+- **AMD64 Platform**: Optimized for x86_64 architecture 
+- **Minimal Base**: Efficient resource usage and faster startup times
+- **Layer Optimization**: Minimized layers and cleaned package caches
+
+### Network Configuration
+- **Custom MAC Address**: Set container MAC address for DHCP reservations
+- **Static IP Support**: Configure static IPv4/IPv6 addresses with validation
+- **Flexible DNS**: Support for multiple DNS servers with various input formats
+- **DHCP Fallback**: Automatic fallback to DHCP if static configuration fails
+- **Network Validation**: Comprehensive IP address and format validation
 
 ### Installed Tools
 - **System Tools**: openssh, git, nano, vim, neovim, tmux, screen, mc, rsync, fzf, ripgrep
 - **Shells**: bash (with completion), zsh (with Oh My Zsh and completions)
-- **DevOps Tools**: opentofu, terraform, kubectl, helm, kustomize, k9s, ansible, packer, pulumi
-- **Kubernetes**: talosctl, kubectx, kubens, flux, argocd, skaffold
-- **Container Tools**: docker-cli, nerdctl, crictl, containerd
-- **Programming Languages**: Python 3 (with pip), Go, Node.js (with npm, for JavaScript)
+- **DevOps Tools**: opentofu, terraform, kubectl, helm, k9s, ansible
+- **Kubernetes**: kubectx, kubens
+- **Container Tools**: docker-cli
+- **Programming Languages**: Python 3 (with pip), Go, Node.js (with npm)
 - **Cloud CLI Tools**: 
   - **AWS**: aws-cli v2
-  - **Azure**: az-cli  
-  - **Google Cloud**: gcloud
-  - **DigitalOcean**: doctl
-  - **Multi-cloud**: PowerShell
-- **Data Processing**: jq, yq, xq, hcl2json, htmlq, dasel, httpie, xmlstarlet, pandoc
-- **Database CLI Tools**: 
-  - **SQL**: postgresql-client, mysql-client, sqlite3
-  - **NoSQL**: mongosh, mongodb-database-tools, redis-tools, cqlsh (Cassandra), etcdctl
-  - **Search**: elasticsearch-cli
-- **Security & Secrets**: sops, openbao, vault, pass, gpg
-- **Monitoring**: promtool (Prometheus)
-- **CI/CD**: jenkins-cli, flux, argocd, skaffold
+- **Data Processing**: jq, yq
+- **Security & Secrets**: vault, pass, gpg
 - **File Systems**: NFS and SMB/CIFS support
-- **Package Management**: nix
+- **Network Tools**: iproute2, net-tools, iputils
 - **Utilities**: 7zip, openssl, curl, wget, huh (version info tool)
-- **Networking**: tailscale for VPN connectivity
+
+### Persistent Storage
+- Root home directory (`/root`) mapped to `./config` for persistence
+- Configuration files automatically symlinked from persistent storage
+- SSH host keys preserved across container restarts
+- Kubernetes configurations, Git settings, and shell customizations persist
+
+## Quick Start
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/EricZarnosky/MagicShell.git
+   cd MagicShell
+   ```
+
+2. **Create the config directory**:
+   ```bash
+   mkdir -p config secrets
+   ```
+
+3. **Set up environment** (optional):
+   ```bash
+   cp .env.example .env
+   # Edit .env with your preferences
+   ```
+
+4. **Build and run**:
+   ```bash
+   docker-compose up -d
+   ```
+
+5. **Connect via SSH**:
+   ```bash
+   ssh root@localhost -p 2222
+   # Default password: "password" (change this!)
+   ```
+
+## Network Configuration
+
+### MAC Address Configuration
+
+Set a custom MAC address for DHCP reservations:
+
+```bash
+# Supported formats:
+MAC=0123456789AB           # 12 hex digits
+MAC=01 23 45 67 89 AB      # Space separated
+MAC=01-23-45-67-89-AB      # Dash separated  
+MAC=01:23:45:67:89:AB      # Colon separated (default format)
+```
+
+**Default MAC**: `0D:EC:AF:C0:FF:EE`
+
+### DHCP Configuration (Default)
+
+Leave IP settings empty for automatic DHCP:
+
+```bash
+# .env file
+MAC=0D:EC:AF:C0:FF:EE
+# All IP variables empty = DHCP mode
+```
+
+### Static IP Configuration
+
+Configure static networking by setting IP_ADDRESS:
+
+```bash
+# Basic static IPv4
+IP_ADDRESS=192.168.1.100/24
+IP_GATEWAY=192.168.1.1
+IP_DNS=8.8.8.8,8.8.4.4
+
+# Full static configuration with IPv6
+IP_ADDRESS=192.168.1.100/24
+IP_ADDRESS6=2001:db8::100/64
+IP_GATEWAY=192.168.1.1
+IP_GATEWAY6=2001:db8::1
+IP_DNS=8.8.8.8, 8.8.4.4
+IP_DNS6=2001:4860:4860::8888,2001:4860:4860::8844
+```
+
+### DNS Configuration Formats
+
+DNS servers support flexible input formats:
+
+```bash
+# Comma separated
+IP_DNS=8.8.8.8,8.8.4.4
+
+# Space separated  
+IP_DNS=8.8.8.8 8.8.4.4
+
+## MagicShell - Universal Infrastructure Management Container
+
+🎭 A comprehensive Arch Linux development container with pre-installed tools for DevOps, Kubernetes, and system administration.
+
+**Repository**: https://github.com/EricZarnosky/MagicShell
+
+## Features
+
+### Base Image Optimization
+- **Arch Linux Rolling Release**: Always up-to-date packages and latest features
+- **AMD64 Platform**: Optimized for x86_64 architecture 
+- **Minimal Base**: Efficient resource usage and faster startup times
+- **Layer Optimization**: Minimized layers and cleaned package caches
+
+### Installed Tools
+- **System Tools**: openssh, git, nano, vim, neovim, tmux, screen, mc, rsync, fzf, ripgrep
+- **Shells**: bash (with completion), zsh (with Oh My Zsh and completions)
+- **DevOps Tools**: opentofu, terraform, kubectl, helm, k9s, ansible
+- **Kubernetes**: kubectx, kubens
+- **Container Tools**: docker-cli
+- **Programming Languages**: Python 3 (with pip), Go, Node.js (with npm)
+- **Cloud CLI Tools**: 
+  - **AWS**: aws-cli v2
+- **Data Processing**: jq, yq
+- **Security & Secrets**: vault, pass, gpg
+- **File Systems**: NFS and SMB/CIFS support
+- **Utilities**: 7zip, openssl, curl, wget, huh (version info tool)
 
 ### Persistent Storage
 - Root home directory (`/root`) mapped to `./config` for persistence
@@ -123,6 +239,33 @@ docker run -d \
 ```
 
 ## Configuration
+
+### SSH Port Configuration
+
+The SSH port is configurable and defaults to 2222 during container installation:
+
+```bash
+# Set custom SSH port
+SSH_PORT=2200
+
+# Container will configure SSH daemon to use this port internally
+# Port mapping will be: host_port:container_port (2200:2200)
+```
+
+**Default SSH Port**: `2222` (set in container during build)
+
+### Connection Examples
+
+```bash
+# Default port (2222)
+ssh root@localhost -p 2222
+
+# Custom port (if SSH_PORT=2200)
+ssh root@localhost -p 2200
+
+# With static IP
+ssh root@192.168.1.100 -p 2222
+```
 
 ### Password Management
 
@@ -217,14 +360,6 @@ Place your fstab configuration in `./config/fstab` to automatically mount NFS/SM
 //192.168.1.100/share /mnt/smb cifs username=user,password=pass 0 0
 ```
 
-### Tailscale Integration
-
-To enable Tailscale:
-
-1. Set `ENABLE_TAILSCALE=true` in your environment
-2. After first run, authenticate: `docker exec -it magicshell tailscale up`
-3. Authentication state persists in `./config/tailscale-state/`
-
 ## Aliases and Shortcuts
 
 The container includes convenient aliases for commonly used tools with full autocomplete support:
@@ -235,11 +370,7 @@ The container includes convenient aliases for commonly used tools with full auto
 | `k` | `kubectl` | Kubernetes CLI |
 | `kx` | `kubectx` | Switch between Kubernetes contexts |
 | `kn` | `kubens` | Switch between Kubernetes namespaces |
-| `t` | `talosctl` | Talos Linux CLI |
 | `h` | `helm` | Helm package manager |
-| `kz` | `kustomize` | Kubernetes configuration customization |
-| `fcd` | `flux` | Flux GitOps toolkit |
-| `acd` | `argocd` | ArgoCD CLI |
 | `ot` | `tofu` | OpenTofu (Terraform alternative) |
 | `tf` | `terraform` | Terraform |
 | `v` | `vault` | HashiCorp Vault |
@@ -276,6 +407,8 @@ ot plan
 vault status
 v status
 ```
+
+## Usage Examples
 
 ### SSH Access
 ```bash
@@ -315,9 +448,6 @@ docker exec -it magicshell go env
 # Node.js development
 docker exec -it magicshell node --version
 docker exec -it magicshell npm --version
-
-# PowerShell
-docker exec -it magicshell pwsh
 ```
 
 ### Cloud Operations
@@ -325,18 +455,6 @@ docker exec -it magicshell pwsh
 # AWS CLI
 docker exec -it magicshell aws configure
 docker exec -it magicshell aws s3 ls
-
-# Azure CLI
-docker exec -it magicshell az login
-docker exec -it magicshell az account list
-
-# Google Cloud CLI
-docker exec -it magicshell gcloud auth login
-docker exec -it magicshell gcloud projects list
-
-# DigitalOcean CLI
-docker exec -it magicshell doctl auth init
-docker exec -it magicshell doctl compute droplet list
 
 # Ansible
 docker exec -it magicshell ansible --version
@@ -358,28 +476,12 @@ docker exec -it magicshell kn default  # Using alias
 docker exec -it magicshell kubectl get nodes
 docker exec -it magicshell k get pods  # Using alias
 docker exec -it magicshell k9s
-docker exec -it magicshell flux get sources git
-docker exec -it magicshell fcd get sources git  # Using alias
-
-# Container runtime tools
-docker exec -it magicshell crictl ps
-docker exec -it magicshell nerdctl ps
 
 # Helm operations
 docker exec -it magicshell helm list
 docker exec -it magicshell h install myapp ./chart  # Using alias
 
-# Talos Linux
-docker exec -it magicshell talosctl config endpoint 10.0.0.1
-docker exec -it magicshell t version  # Using alias
-
-# Kustomize
-docker exec -it magicshell kustomize build .
-docker exec -it magicshell kz build .  # Using alias
-
-# ArgoCD
-docker exec -it magicshell argocd app list
-docker exec -it magicshell acd app sync myapp  # Using alias
+# kubectx and kubens have built-in completion support
 ```
 
 ### Infrastructure as Code
@@ -395,56 +497,21 @@ docker exec -it magicshell terraform init
 docker exec -it magicshell terraform plan
 docker exec -it magicshell terraform apply
 docker exec -it magicshell tf version  # Using alias
-
-# Pulumi
-docker exec -it magicshell pulumi up
-
-# Packer
-docker exec -it magicshell packer build template.json
 ```
 
 ### Security & Secrets Management
 ```bash
-# OpenBao (Vault alternative)
-docker exec -it magicshell bao server -dev
-docker exec -it magicshell bao login
-docker exec -it magicshell bao kv put secret/myapp password=secret
-
 # HashiCorp Vault
 docker exec -it magicshell vault server -dev
 docker exec -it magicshell vault login
 docker exec -it magicshell vault kv put secret/myapp password=secret
 docker exec -it magicshell v status  # Using alias
 
-# SOPS (encrypted files)
-docker exec -it magicshell sops -e secrets.yaml
-
 # Password manager
 docker exec -it magicshell pass show myservice/password
 
 # GPG operations
 docker exec -it magicshell gpg --gen-key
-```
-
-### Database Operations
-```bash
-# PostgreSQL
-docker exec -it magicshell psql -h hostname -U username -d database
-
-# MySQL
-docker exec -it magicshell mysql -h hostname -u username -p
-
-# MongoDB
-docker exec -it magicshell mongosh mongodb://hostname:27017
-
-# Redis
-docker exec -it magicshell redis-cli -h hostname
-
-# Cassandra
-docker exec -it magicshell cqlsh hostname
-
-# SQLite
-docker exec -it magicshell sqlite3 database.db
 ```
 
 ### Data Processing & APIs
@@ -455,24 +522,7 @@ docker exec -it magicshell echo '{"name":"test"}' | jq '.name'
 # YAML processing  
 docker exec -it magicshell yq '.spec.containers[0].name' pod.yaml
 
-# XML processing
-docker exec -it magicshell echo '<root><n>test</n></root>' | xq '.root.name'
-docker exec -it magicshell xmlstarlet sel -t -v "//name" file.xml
-
-# HCL processing (OpenTofu/Terraform files)
-docker exec -it magicshell hcl2json main.tf | jq '.resource'
-
-# HTML processing
-docker exec -it magicshell htmlq 'title' index.html
-
-# Universal data processing (JSON, YAML, TOML, XML, CSV)
-docker exec -it magicshell dasel -f data.yaml '.items.[0].name'
-
-# Markdown processing
-docker exec -it magicshell pandoc README.md -o README.html
-
 # HTTP requests
-docker exec -it magicshell http GET api.example.com/users
 docker exec -it magicshell curl -X POST api.example.com/data
 
 # File searching
@@ -493,83 +543,81 @@ docker exec -it magicshell 7z x archive.7z
 
 ```
 MagicShell/
-├── Dockerfile
-├── docker-compose.yml
-├── entrypoint.sh
-├── huh
-├── .dockerignore
-├── .env.example
-├── README.md
+├── Dockerfile                   # Arch Linux container definition
+├── docker-compose.yml          # Container orchestration
+├── entrypoint.sh               # Container startup script
+├── huh                         # Tool version display script
+├── .dockerignore              # Docker build exclusions
+├── .env.example               # Environment template
+├── README.md                  # This file
 ├── .github/
 │   └── workflows/
-│       └── docker-build.yml
-├── config/              # Persistent home directory
+│       └── docker-build.yml   # Automated build pipeline
+├── config/                    # Persistent home directory
 │   ├── .bashrc
 │   ├── .zshrc
 │   ├── .kube/
 │   ├── .ssh/
 │   ├── fstab
 │   └── tailscale-state/
-└── secrets/            # Password files (if using)
+└── secrets/                   # Password files (if using)
     └── root_password.txt
 ```
 
 ## Automated Builds
 
-The container is automatically built and published to GitHub Container Registry with optimized multi-platform builds:
+The container is automatically built and published to GitHub Container Registry:
 
 - **Latest builds**: `ghcr.io/ericzarnosky/magicshell:latest`
-- **Date-tagged builds**: `ghcr.io/ericzarnosky/magicshell:YYYY.MM.DD-<commit>`
-- **Version tags**: `ghcr.io/ericzarnosky/magicshell:v1.0.0` (when you tag releases)
+- **Date-tagged builds**: `ghcr.io/ericzarnosky/magicshell:2025.06.28-<commit>`
+- **Version tags**: `ghcr.io/ericzarnosky/magicshell:0.0.1` (when you tag releases)
 
 ### Build Optimizations
-- **Multi-platform builds**: Supports both AMD64 and ARM64 architectures
-- **Parallel builds**: Uses matrix strategy for faster build times
-- **Latest tool versions**: Automatically installs current releases with retry logic for reliability
-- **Optimized caching**: Uses GitHub Actions cache for faster subsequent builds
-- **Smart fallbacks**: Uses known-good versions if GitHub API calls fail
+- **AMD64 platform**: Single architecture for maximum compatibility
+- **Latest tool versions**: Automatically installs current releases with retry logic
+- **Optimized caching**: Uses GitHub Actions cache for faster builds
+- **Smart fallbacks**: Uses known-good approaches if downloads fail
 
 ### Available Tags
 - `:latest` - Latest build from main branch
-- `:main` - Latest main branch build
+- `:0.0.1`, `:0.0`, `:0` - Semantic version tags
 - `:YYYY.MM.DD-<commit>` - Date and commit specific builds
-- `:v<version>` - Semantic version tags (when you create releases)
 
 ## Security Considerations
 
 1. **Change the default password** immediately
 2. **Use password files** instead of environment variables for production
 3. **Secure SSH keys** in the persistent `.ssh` directory
-4. **Network access** - Container runs in host network mode for Tailscale compatibility
-5. **Privileged mode** - Required for NFS/SMB mounting and Tailscale
+4. **Network access** - Container runs in host network mode for optimal performance
+5. **Privileged mode** - Required for NFS/SMB mounting capabilities
 
 ## Tool Versions (Latest with Reliability)
 
-All tools automatically install the latest versions with intelligent retry logic to handle GitHub API rate limits:
+All tools automatically install the latest versions with intelligent retry logic:
 
 ### Version Management Strategy
 - **Latest Versions**: Always installs the most current release of each tool
-- **Retry Logic**: GitHub API calls retry 3 times with 30-second delays to handle rate limits
-- **Fallback Versions**: If API calls fail, uses recent known-good versions as fallbacks
-- **Multi-Architecture**: Automatically detects and installs correct binaries for AMD64 and ARM64
+- **Retry Logic**: GitHub API calls retry 3 times with 30-second delays
+- **Multi-Architecture**: AMD64 optimized for maximum compatibility
+- **Pacman Integration**: Uses Arch package manager where possible for efficiency
 
 ### Core Tools (Always Latest)
-- **Kustomize**: Latest release (fallback: v5.5.0)
-- **Go**: Latest stable (fallback: go1.23.4)
-- **Node.js**: Latest LTS (fallback: v20)
-- **yq**: Latest release (fallback: v4.44.3)
-- **Flux**: Latest release (fallback: v2.4.0)
-- **ArgoCD**: Latest release (fallback: v2.13.1)
-- **Pulumi**: Latest release (fallback: v3.140.0)
-- **k9s**: Latest release (fallback: v0.32.7)
-- **Talosctl**: Latest release (fallback: v1.8.3)
-- **And many more...**
+- **Go**: Latest stable from official source
+- **Node.js**: Latest LTS from Arch repos
+- **OpenTofu**: Latest release from GitHub
+- **Terraform**: Latest release from HashiCorp
+- **kubectl**: Latest stable from Kubernetes
+- **Helm**: Latest via official installer
+- **yq**: Latest release from GitHub
+- **k9s**: Latest release from GitHub
+- **Vault**: Latest release from HashiCorp
+- **AWS CLI**: Latest v2 from Amazon
 
 ### Benefits
 - **Latest Features**: Always get the newest capabilities and improvements
 - **Security Updates**: Automatic inclusion of latest security patches
-- **Build Reliability**: Retry logic prevents GitHub API rate limit failures
-- **No Maintenance**: No need to manually update version numbers in Dockerfile
+- **Build Reliability**: Retry logic prevents temporary download failures
+- **No Maintenance**: No need to manually update version numbers
 
 To see all installed versions in your running container:
 ```bash
@@ -579,25 +627,19 @@ docker exec -it magicshell huh
 ## Troubleshooting
 
 ### Build Issues
-- **GitHub API Rate Limits**: Retry logic with fallback versions prevents this issue
-- **Multi-platform Support**: ARM64 builds may take longer but are fully supported
+- **GitHub API Rate Limits**: Retry logic with delays prevents this issue
 - **Network Issues**: Ensure Docker daemon has internet access during build
-- **API Failures**: Builds will use fallback versions if GitHub API is unavailable
+- **Pacman Updates**: Arch rolling release may occasionally have package conflicts
 
 ### SSH Connection Issues
 - Verify port mapping: `docker-compose ps`
-- Check SSH service: `docker exec -it magicshell systemctl status ssh`
+- Check SSH service: `docker exec -it magicshell systemctl status sshd`
 - Review logs: `docker-compose logs magicshell`
 
 ### Mount Issues
 - Ensure proper privileges and capabilities are set
 - Check fstab syntax in `./config/fstab`
 - Verify network connectivity to NFS/SMB servers
-
-### Tailscale Issues
-- Check daemon status: `docker exec -it magicshell tailscale status`
-- Re-authenticate: `docker exec -it magicshell tailscale up`
-- Check logs: `docker exec -it magicshell journalctl -u tailscaled`
 
 ### Tool Version Issues
 - Run `docker exec -it magicshell huh` to see all installed versions
@@ -619,9 +661,9 @@ docker exec -it magicshell huh
 Edit the Dockerfile to install additional packages:
 
 ```dockerfile
-RUN apt-get update && apt-get install -y \
+RUN pacman -S --noconfirm \
     your-additional-package \
-    && rm -rf /var/lib/apt/lists/*
+    && pacman -Scc --noconfirm
 ```
 
 ### Shell Customization
@@ -706,25 +748,21 @@ jobs:
 | `TZ` | `UTC` | Timezone |
 | `ENABLE_TAILSCALE` | `false` | Enable Tailscale daemon |
 
-## Open Source Tools
+## Arch Linux Benefits
 
-MagicShell includes both open source alternatives and original tools for maximum compatibility:
+### Why Arch Linux?
+- **Rolling Release**: Always latest packages and features
+- **Pacman Package Manager**: Fast, efficient, and reliable
+- **Minimal Base**: Smaller attack surface and faster startup
+- **AUR Access**: Largest package repository in Linux
+- **Cutting Edge**: Latest kernels, tools, and libraries
+- **Customization**: Build exactly what you need
 
-### Infrastructure as Code
-- **OpenTofu** - Open source Terraform alternative (license-free)
-- **Terraform** - Original HashiCorp Terraform (both tools coexist)
-- Both tools can be used side-by-side with separate state files
-
-### Secrets Management  
-- **OpenBao** - Open source Vault alternative
-- **HashiCorp Vault** - Original Vault (both tools coexist)
-- Both tools can run simultaneously on different ports
-
-### Compatibility
-- **Coexistence**: Tools are installed to separate binaries and can run together
-- **Command Compatibility**: Both tool pairs use similar command structures
-- **Migration**: Easy to migrate between tools or use both as needed
-- **Aliases**: Convenient shortcuts available for all tools
+### Performance Advantages
+- **Smaller Base Image**: Faster downloads and startup
+- **Optimized Packages**: Compiled for modern x86_64 with optimizations
+- **Less Bloat**: Only essential components included
+- **Faster Package Operations**: Pacman is extremely efficient
 
 ## Contributing
 
@@ -733,6 +771,19 @@ MagicShell includes both open source alternatives and original tools for maximum
 3. Make your changes
 4. Test the build locally: `docker-compose build`
 5. Submit a pull request
+
+## Versioning
+
+This project uses semantic versioning:
+- **Major**: Breaking changes or significant architecture updates
+- **Minor**: New tools or features added
+- **Patch**: Bug fixes, security updates, or tool version bumps
+
+To create a new release:
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
 
 ## License
 

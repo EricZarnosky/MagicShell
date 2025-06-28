@@ -8,7 +8,7 @@ services:
     hostname: ${HOSTNAME:-MagicShell}
     restart: unless-stopped
     
-    # Privileged mode for NFS/SMB mounting and Tailscale
+    # Privileged mode for NFS/SMB mounting and network configuration
     privileged: true
     
     # Network configuration
@@ -24,6 +24,16 @@ services:
       - PUID=${PUID:-1000}
       - PGID=${PGID:-1000}
       - ENABLE_TAILSCALE=${ENABLE_TAILSCALE:-false}
+      # Network configuration
+      - MAC=${MAC:-0D:EC:AF:C0:FF:EE}
+      - IP_ADDRESS=${IP_ADDRESS:-}
+      - IP_ADDRESS6=${IP_ADDRESS6:-}
+      - IP_GATEWAY=${IP_GATEWAY:-}
+      - IP_GATEWAY6=${IP_GATEWAY6:-}
+      - IP_DNS=${IP_DNS:-}
+      - IP_DNS6=${IP_DNS6:-}
+      # SSH configuration
+      - SSH_PORT=${SSH_PORT:-2222}
     
     # Volume mounts
     volumes:
@@ -39,9 +49,9 @@ services:
       # Tailscale socket (if running Tailscale on host)
       # - /var/run/tailscale:/var/run/tailscale
     
-    # Exposed ports
+    # Exposed ports - SSH port is now configurable
     ports:
-      - "${SSH_PORT:-2222}:22"
+      - "${SSH_PORT:-2222}:${SSH_PORT:-2222}"
     
     # Secrets (uncomment to use password file)
     # secrets:
@@ -52,48 +62,9 @@ services:
       - SYS_ADMIN
       - NET_ADMIN
       - DAC_READ_SEARCH
+      - NET_RAW  # Required for network configuration
     
     # Device access for NFS/SMB
-    devices:
-      - /dev/fuse
-
-  # Ubuntu variant service
-  magicshell-ubuntu:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: ghcr.io/ericzarnosky/magicshell:ubuntu
-    container_name: ${CONTAINER_NAME:-magicshell}-ubuntu
-    hostname: ${HOSTNAME:-MagicShell}-Ubuntu
-    restart: unless-stopped
-    profiles: ["ubuntu"]  # Only start with --profile ubuntu
-    
-    # Same configuration as main service
-    privileged: true
-    network_mode: host
-    
-    environment:
-      - PASSWORD=${PASSWORD:-password}
-      - PASSWORD_FILE=${PASSWORD_FILE:-}
-      - TZ=${TZ:-UTC}
-      - SHELL=${SHELL:-bash}
-      - HOSTNAME=${HOSTNAME:-MagicShell}-Ubuntu
-      - PUID=${PUID:-1000}
-      - PGID=${PGID:-1000}
-      - ENABLE_TAILSCALE=${ENABLE_TAILSCALE:-false}
-    
-    volumes:
-      - ./config:/root/config
-      - ./config/fstab:/etc/fstab:ro
-    
-    ports:
-      - "${SSH_PORT:-2222}:22"
-    
-    cap_add:
-      - SYS_ADMIN
-      - NET_ADMIN
-      - DAC_READ_SEARCH
-    
     devices:
       - /dev/fuse
 

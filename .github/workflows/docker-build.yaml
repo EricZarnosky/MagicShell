@@ -1,4 +1,4 @@
-name: Build and Push Docker Images
+name: Build and Push Docker Image
 
 on:
   push:
@@ -23,19 +23,9 @@ jobs:
     permissions:
       contents: read
       packages: write
-      id-token: write  # Required for attestations
-      attestations: write  # Required for attestations
+      id-token: write
+      attestations: write
     
-    strategy:
-      matrix:
-        include:
-          - dockerfile: Dockerfile
-            variant: ubuntu
-            base-image: ubuntu:24.04
-          - dockerfile: Dockerfile.arch
-            variant: arch
-            base-image: archlinux:latest
-
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
@@ -66,28 +56,15 @@ jobs:
       id: tags
       run: |
         VERSION=${{ steps.version.outputs.version }}
-        VARIANT=${{ matrix.variant }}
-        BASE_TAGS=""
-        
-        if [[ "$VARIANT" == "arch" ]]; then
-          # Arch is default (latest)
-          BASE_TAGS="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
-          BASE_TAGS="$BASE_TAGS,${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:arch"
-          BASE_TAGS="$BASE_TAGS,${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:arch-${VERSION}"
-          BASE_TAGS="$BASE_TAGS,${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:arch-${{ steps.version.outputs.minor }}"
-          BASE_TAGS="$BASE_TAGS,${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:arch-${{ steps.version.outputs.major }}"
-        else
-          # Ubuntu variant
-          BASE_TAGS="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ubuntu"
-          BASE_TAGS="$BASE_TAGS,${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ubuntu-${VERSION}"
-          BASE_TAGS="$BASE_TAGS,${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ubuntu-${{ steps.version.outputs.minor }}"
-          BASE_TAGS="$BASE_TAGS,${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ubuntu-${{ steps.version.outputs.major }}"
-        fi
+        BASE_TAGS="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+        BASE_TAGS="$BASE_TAGS,${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION}"
+        BASE_TAGS="$BASE_TAGS,${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.minor }}"
+        BASE_TAGS="$BASE_TAGS,${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.major }}"
         
         # Add date tag for main branch builds
         if [[ "${{ github.ref }}" == "refs/heads/main" ]] || [[ "${{ github.ref }}" == "refs/heads/master" ]]; then
           DATE_TAG=$(date '+%Y.%m.%d')-$(echo ${{ github.sha }} | cut -c1-7)
-          BASE_TAGS="$BASE_TAGS,${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VARIANT}-${DATE_TAG}"
+          BASE_TAGS="$BASE_TAGS,${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${DATE_TAG}"
         fi
         
         echo "tags=$BASE_TAGS" >> $GITHUB_OUTPUT
@@ -104,7 +81,6 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: .
-        file: ${{ matrix.dockerfile }}
         platforms: linux/amd64
         push: true
         tags: ${{ steps.tags.outputs.tags }}
@@ -112,13 +88,12 @@ jobs:
         build-args: |
           BUILD_DATE=${{ github.event.head_commit.timestamp }}
           VCS_REF=${{ github.sha }}
-          BASE_IMAGE=${{ matrix.base-image }}
-        cache-from: type=gha,scope=${{ matrix.variant }}
-        cache-to: type=gha,mode=max,scope=${{ matrix.variant }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
 
     - name: Generate artifact attestation
       uses: actions/attest-build-provenance@v1
-      if: github.event_name != 'pull_request'  # Skip attestations for PRs
+      if: github.event_name != 'pull_request'
       with:
         subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         subject-digest: ${{ steps.build.outputs.digest }}
